@@ -8,7 +8,7 @@ Type an instruction to execute it. Any register that has changed will be printed
 
 ```
 > mov rax, 0xff
-rax = 0xff
+rax            0xff                255
 ```
 
 Changes to the stack memory will also be printed. Changed bytes are colored in red:
@@ -29,40 +29,37 @@ Type a register name to print its value:
 
 ```
 > rax
-rax = 0xff
+rax            0xff                255
 ```
 
 To print all registers, use the `regs` command:
 
 ```
 > regs
-r15 = 0
-r14 = 0
-r13 = 0
-r12 = 0x559f17bf53a0
-rbp = 0x7ffea75e4f20
-rbx = 0
-r11 = 0x286
-r10 = 0
-r9 = 0x7fd7a71ef5c0
-r8 = 0xffffffff
-rax = 0
-rcx = 0
-rdx = 0
-rsi = 0
-rdi = 0
-orig_rax = 0xffffffffffffffff
-rip = 0x559f17bf72c1
-cs = 0x33
-eflags = 0x202
-rsp = 0x7ffea75e4f08
-ss = 0x2b
-fs_base = 0x7fd7a71ef5c0
-gs_base = 0
-ds = 0
-es = 0
-fs = 0
-gs = 0
+rax            0x0                 0
+rbx            0x0                 0
+rcx            0x0                 0
+rdx            0x0                 0
+rsi            0x0                 0
+rdi            0x0                 0
+rbp            0x7ffc29804130      0x7ffc29804130
+rsp            0x7ffc29804118      0x7ffc29804118
+r8             0xffffffff          4294967295
+r9             0x7fec7c34b5c0      140653672838592
+r10            0x0                 0
+r11            0x286               646
+r12            0x559fa74103a0      94144194216864
+r13            0x0                 0
+r14            0x0                 0
+r15            0x0                 0
+rip            0x559fa74128d1      0x559fa74128d1
+eflags         0x206               [ PF IF ]
+cs             0x33                51
+ss             0x2b                43
+ds             0x0                 0
+es             0x0                 0
+fs             0x0                 0
+gs             0x0                 0
 ```
 
 To print the stack memory, use the `stack` command:

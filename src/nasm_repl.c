@@ -23,6 +23,26 @@ extern void run_child(void);
 #define COLOR_RESET "\033[m"
 #define COLOR_STACK_DIFF "\033[1;31m"
 
+enum eflags {
+    EFLAGS_CF = 0x00000001,
+    EFLAGS_PF = 0x00000004,
+    EFLAGS_AF = 0x00000010,
+    EFLAGS_ZF = 0x00000040,
+    EFLAGS_SF = 0x00000080,
+    EFLAGS_TF = 0x00000100,
+    EFLAGS_IF = 0x00000200,
+    EFLAGS_DF = 0x00000400,
+    EFLAGS_OF = 0x00000800,
+    EFLAGS_IOPL = 0x00003000,
+    EFLAGS_NT = 0x00004000,
+    EFLAGS_RF = 0x00010000,
+    EFLAGS_VM = 0x00020000,
+    EFLAGS_AC = 0x00040000,
+    EFLAGS_VIF = 0x00080000,
+    EFLAGS_VIP = 0x00100000,
+    EFLAGS_ID = 0x00200000
+};
+
 void die(const char *fmt, ...) {
     va_list ap;
 
@@ -113,173 +133,211 @@ void print_stack(uint64_t frame_pointer, unsigned char *prev_stack,
     }
 }
 
+void print_eflags(unsigned long long int eflags) {
+    printf("%-15s0x%-18llx%s", "eflags", eflags, "[ ");
+    if (eflags & EFLAGS_CF) {
+        printf("CF ");
+    }
+    if (eflags & EFLAGS_PF) {
+        printf("PF ");
+    }
+    if (eflags & EFLAGS_AF) {
+        printf("AF ");
+    }
+    if (eflags & EFLAGS_ZF) {
+        printf("ZF ");
+    }
+    if (eflags & EFLAGS_SF) {
+        printf("SF ");
+    }
+    if (eflags & EFLAGS_TF) {
+        printf("TF ");
+    }
+    if (eflags & EFLAGS_IF) {
+        printf("IF ");
+    }
+    if (eflags & EFLAGS_DF) {
+        printf("DF ");
+    }
+    if (eflags & EFLAGS_OF) {
+        printf("OF ");
+    }
+    if (eflags & EFLAGS_IOPL) {
+        printf("IOPL ");
+    }
+    if (eflags & EFLAGS_NT) {
+        printf("NT ");
+    }
+    if (eflags & EFLAGS_RF) {
+        printf("RF ");
+    }
+    if (eflags & EFLAGS_VM) {
+        printf("VM ");
+    }
+    if (eflags & EFLAGS_AC) {
+        printf("AC ");
+    }
+    if (eflags & EFLAGS_VIF) {
+        printf("VIF ");
+    }
+    if (eflags & EFLAGS_VIP) {
+        printf("VIP ");
+    }
+    if (eflags & EFLAGS_ID) {
+        printf("ID ");
+    }
+    printf("]\n");
+}
+
 void print_regs(struct user_regs_struct *regs) {
-    printf("r15 = %#llx\n", regs->r15);
-    printf("r14 = %#llx\n", regs->r14);
-    printf("r13 = %#llx\n", regs->r13);
-    printf("r12 = %#llx\n", regs->r12);
-    printf("rbp = %#llx\n", regs->rbp);
-    printf("rbx = %#llx\n", regs->rbx);
-    printf("r11 = %#llx\n", regs->r11);
-    printf("r10 = %#llx\n", regs->r10);
-    printf("r9 = %#llx\n", regs->r9);
-    printf("r8 = %#llx\n", regs->r8);
-    printf("rax = %#llx\n", regs->rax);
-    printf("rcx = %#llx\n", regs->rcx);
-    printf("rdx = %#llx\n", regs->rdx);
-    printf("rsi = %#llx\n", regs->rsi);
-    printf("rdi = %#llx\n", regs->rdi);
-    printf("orig_rax = %#llx\n", regs->orig_rax);
-    printf("rip = %#llx\n", regs->rip);
-    printf("cs = %#llx\n", regs->cs);
-    printf("eflags = %#llx\n", regs->eflags);
-    printf("rsp = %#llx\n", regs->rsp);
-    printf("ss = %#llx\n", regs->ss);
-    printf("fs_base = %#llx\n", regs->fs_base);
-    printf("gs_base = %#llx\n", regs->gs_base);
-    printf("ds = %#llx\n", regs->ds);
-    printf("es = %#llx\n", regs->es);
-    printf("fs = %#llx\n", regs->fs);
-    printf("gs = %#llx\n", regs->gs);
+    printf("%-15s0x%-18llx%lld\n", "rax", regs->rax, regs->rax);
+    printf("%-15s0x%-18llx%lld\n", "rbx", regs->rbx, regs->rbx);
+    printf("%-15s0x%-18llx%lld\n", "rcx", regs->rcx, regs->rcx);
+    printf("%-15s0x%-18llx%lld\n", "rdx", regs->rdx, regs->rdx);
+    printf("%-15s0x%-18llx%lld\n", "rsi", regs->rsi, regs->rsi);
+    printf("%-15s0x%-18llx%lld\n", "rdi", regs->rdi, regs->rdi);
+    printf("%-15s0x%-18llx0x%llx\n", "rbp", regs->rbp, regs->rbp);
+    printf("%-15s0x%-18llx0x%llx\n", "rsp", regs->rsp, regs->rsp);
+    printf("%-15s0x%-18llx%lld\n", "r8", regs->r8, regs->r8);
+    printf("%-15s0x%-18llx%lld\n", "r9", regs->r9, regs->r9);
+    printf("%-15s0x%-18llx%lld\n", "r10", regs->r10, regs->r10);
+    printf("%-15s0x%-18llx%lld\n", "r11", regs->r11, regs->r11);
+    printf("%-15s0x%-18llx%lld\n", "r12", regs->r12, regs->r12);
+    printf("%-15s0x%-18llx%lld\n", "r13", regs->r13, regs->r13);
+    printf("%-15s0x%-18llx%lld\n", "r14", regs->r14, regs->r14);
+    printf("%-15s0x%-18llx%lld\n", "r15", regs->r15, regs->r15);
+    printf("%-15s0x%-18llx0x%llx\n", "rip", regs->rip, regs->rip);
+    print_eflags(regs->eflags);
+    printf("%-15s0x%-18llx%lld\n", "cs", regs->cs, regs->cs);
+    printf("%-15s0x%-18llx%lld\n", "ss", regs->ss, regs->ss);
+    printf("%-15s0x%-18llx%lld\n", "ds", regs->ds, regs->ds);
+    printf("%-15s0x%-18llx%lld\n", "es", regs->es, regs->es);
+    printf("%-15s0x%-18llx%lld\n", "fs", regs->fs, regs->fs);
+    printf("%-15s0x%-18llx%lld\n", "gs", regs->gs, regs->gs);
 }
 
 void print_changed_regs(struct user_regs_struct *prev_regs,
                         struct user_regs_struct *regs) {
-    if (prev_regs->r15 != regs->r15) {
-        printf("r15 = %#llx\n", regs->r15);
-    }
-    if (prev_regs->r14 != regs->r14) {
-        printf("r14 = %#llx\n", regs->r14);
-    }
-    if (prev_regs->r13 != regs->r13) {
-        printf("r13 = %#llx\n", regs->r13);
-    }
-    if (prev_regs->r12 != regs->r12) {
-        printf("r12 = %#llx\n", regs->r12);
-    }
-    if (prev_regs->rbp != regs->rbp) {
-        printf("rbp = %#llx\n", regs->rbp);
+    if (prev_regs->rax != regs->rax) {
+        printf("%-15s0x%-18llx%lld\n", "rax", regs->rax, regs->rax);
     }
     if (prev_regs->rbx != regs->rbx) {
-        printf("rbx = %#llx\n", regs->rbx);
-    }
-    if (prev_regs->r11 != regs->r11) {
-        printf("r11 = %#llx\n", regs->r11);
-    }
-    if (prev_regs->r10 != regs->r10) {
-        printf("r10 = %#llx\n", regs->r10);
-    }
-    if (prev_regs->r9 != regs->r9) {
-        printf("r9 = %#llx\n", regs->r9);
-    }
-    if (prev_regs->r8 != regs->r8) {
-        printf("r8 = %#llx\n", regs->r8);
-    }
-    if (prev_regs->rax != regs->rax) {
-        printf("rax = %#llx\n", regs->rax);
+        printf("%-15s0x%-18llx%lld\n", "rbx", regs->rbx, regs->rbx);
     }
     if (prev_regs->rcx != regs->rcx) {
-        printf("rcx = %#llx\n", regs->rcx);
+        printf("%-15s0x%-18llx%lld\n", "rcx", regs->rcx, regs->rcx);
     }
     if (prev_regs->rdx != regs->rdx) {
-        printf("rdx = %#llx\n", regs->rdx);
+        printf("%-15s0x%-18llx%lld\n", "rdx", regs->rdx, regs->rdx);
     }
     if (prev_regs->rsi != regs->rsi) {
-        printf("rsi = %#llx\n", regs->rsi);
+        printf("%-15s0x%-18llx%lld\n", "rsi", regs->rsi, regs->rsi);
     }
     if (prev_regs->rdi != regs->rdi) {
-        printf("rdi = %#llx\n", regs->rdi);
+        printf("%-15s0x%-18llx%lld\n", "rdi", regs->rdi, regs->rdi);
     }
-    if (prev_regs->orig_rax != regs->orig_rax) {
-        printf("orig_rax = %#llx\n", regs->orig_rax);
-    }
-    if (prev_regs->cs != regs->cs) {
-        printf("cs = %#llx\n", regs->cs);
-    }
-    if (prev_regs->eflags != regs->eflags) {
-        printf("eflags = %#llx\n", regs->eflags);
+    if (prev_regs->rbp != regs->rbp) {
+        printf("%-15s0x%-18llx0x%llx\n", "rbp", regs->rbp, regs->rbp);
     }
     if (prev_regs->rsp != regs->rsp) {
-        printf("rsp = %#llx\n", regs->rsp);
+        printf("%-15s0x%-18llx0x%llx\n", "rsp", regs->rsp, regs->rsp);
+    }
+    if (prev_regs->r8 != regs->r8) {
+        printf("%-15s0x%-18llx%lld\n", "r8", regs->r8, regs->r8);
+    }
+    if (prev_regs->r9 != regs->r9) {
+        printf("%-15s0x%-18llx%lld\n", "r9", regs->r9, regs->r9);
+    }
+    if (prev_regs->r10 != regs->r10) {
+        printf("%-15s0x%-18llx%lld\n", "r10", regs->r10, regs->r10);
+    }
+    if (prev_regs->r11 != regs->r11) {
+        printf("%-15s0x%-18llx%lld\n", "r11", regs->r11, regs->r11);
+    }
+    if (prev_regs->r12 != regs->r12) {
+        printf("%-15s0x%-18llx%lld\n", "r12", regs->r12, regs->r12);
+    }
+    if (prev_regs->r13 != regs->r13) {
+        printf("%-15s0x%-18llx%lld\n", "r13", regs->r13, regs->r13);
+    }
+    if (prev_regs->r14 != regs->r14) {
+        printf("%-15s0x%-18llx%lld\n", "r14", regs->r14, regs->r14);
+    }
+    if (prev_regs->r15 != regs->r15) {
+        printf("%-15s0x%-18llx%lld\n", "r15", regs->r15, regs->r15);
+    }
+    if (prev_regs->eflags != regs->eflags) {
+        print_eflags(regs->eflags);
+    }
+    if (prev_regs->cs != regs->cs) {
+        printf("%-15s0x%-18llx%lld\n", "cs", regs->cs, regs->cs);
     }
     if (prev_regs->ss != regs->ss) {
-        printf("ss = %#llx\n", regs->ss);
-    }
-    if (prev_regs->fs_base != regs->fs_base) {
-        printf("fs_base = %#llx\n", regs->fs_base);
-    }
-    if (prev_regs->gs_base != regs->gs_base) {
-        printf("gs_base = %#llx\n", regs->gs_base);
+        printf("%-15s0x%-18llx%lld\n", "ss", regs->ss, regs->ss);
     }
     if (prev_regs->ds != regs->ds) {
-        printf("ds = %#llx\n", regs->ds);
+        printf("%-15s0x%-18llx%lld\n", "ds", regs->ds, regs->ds);
     }
     if (prev_regs->es != regs->es) {
-        printf("es = %#llx\n", regs->es);
+        printf("%-15s0x%-18llx%lld\n", "es", regs->es, regs->es);
     }
     if (prev_regs->fs != regs->fs) {
-        printf("fs = %#llx\n", regs->fs);
+        printf("%-15s0x%-18llx%lld\n", "fs", regs->fs, regs->fs);
     }
     if (prev_regs->gs != regs->gs) {
-        printf("gs = %#llx\n", regs->gs);
+        printf("%-15s0x%-18llx%lld\n", "gs", regs->gs, regs->gs);
     }
 }
 
 int handle_reg_command(char *line, struct user_regs_struct *regs) {
-    if (strcmp(line, "r15") == 0) {
-        printf("r15 = %#llx\n", regs->r15);
-    } else if (strcmp(line, "r14") == 0) {
-        printf("r14 = %#llx\n", regs->r14);
-    } else if (strcmp(line, "r13") == 0) {
-        printf("r13 = %#llx\n", regs->r13);
-    } else if (strcmp(line, "r12") == 0) {
-        printf("r12 = %#llx\n", regs->r12);
-    } else if (strcmp(line, "rbp") == 0) {
-        printf("rbp = %#llx\n", regs->rbp);
+    if (strcmp(line, "rax") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "rax", regs->rax, regs->rax);
     } else if (strcmp(line, "rbx") == 0) {
-        printf("rbx = %#llx\n", regs->rbx);
-    } else if (strcmp(line, "r11") == 0) {
-        printf("r11 = %#llx\n", regs->r11);
-    } else if (strcmp(line, "r10") == 0) {
-        printf("r10 = %#llx\n", regs->r10);
-    } else if (strcmp(line, "r9") == 0) {
-        printf("r9 = %#llx\n", regs->r9);
-    } else if (strcmp(line, "r8") == 0) {
-        printf("r8 = %#llx\n", regs->r8);
-    } else if (strcmp(line, "rax") == 0) {
-        printf("rax = %#llx\n", regs->rax);
+        printf("%-15s0x%-18llx%lld\n", "rbx", regs->rbx, regs->rbx);
     } else if (strcmp(line, "rcx") == 0) {
-        printf("rcx = %#llx\n", regs->rcx);
+        printf("%-15s0x%-18llx%lld\n", "rcx", regs->rcx, regs->rcx);
     } else if (strcmp(line, "rdx") == 0) {
-        printf("rdx = %#llx\n", regs->rdx);
+        printf("%-15s0x%-18llx%lld\n", "rdx", regs->rdx, regs->rdx);
     } else if (strcmp(line, "rsi") == 0) {
-        printf("rsi = %#llx\n", regs->rsi);
+        printf("%-15s0x%-18llx%lld\n", "rsi", regs->rsi, regs->rsi);
     } else if (strcmp(line, "rdi") == 0) {
-        printf("rdi = %#llx\n", regs->rdi);
-    } else if (strcmp(line, "orig_rax") == 0) {
-        printf("orig_rax = %#llx\n", regs->orig_rax);
-    } else if (strcmp(line, "rip") == 0) {
-        printf("rip = %#llx\n", regs->rip);
-    } else if (strcmp(line, "cs") == 0) {
-        printf("cs = %#llx\n", regs->cs);
-    } else if (strcmp(line, "eflags") == 0) {
-        printf("eflags = %#llx\n", regs->eflags);
+        printf("%-15s0x%-18llx%lld\n", "rdi", regs->rdi, regs->rdi);
+    } else if (strcmp(line, "rbp") == 0) {
+        printf("%-15s0x%-18llx0x%llx\n", "rbp", regs->rbp, regs->rbp);
     } else if (strcmp(line, "rsp") == 0) {
-        printf("rsp = %#llx\n", regs->rsp);
+        printf("%-15s0x%-18llx0x%llx\n", "rsp", regs->rsp, regs->rsp);
+    } else if (strcmp(line, "r8") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "r8", regs->r8, regs->r8);
+    } else if (strcmp(line, "r9") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "r9", regs->r9, regs->r9);
+    } else if (strcmp(line, "r10") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "r10", regs->r10, regs->r10);
+    } else if (strcmp(line, "r11") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "r11", regs->r11, regs->r11);
+    } else if (strcmp(line, "r12") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "r12", regs->r12, regs->r12);
+    } else if (strcmp(line, "r13") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "r13", regs->r13, regs->r13);
+    } else if (strcmp(line, "r14") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "r14", regs->r14, regs->r14);
+    } else if (strcmp(line, "r15") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "r15", regs->r15, regs->r15);
+    } else if (strcmp(line, "rip") == 0) {
+        printf("%-15s0x%-18llx0x%lld\n", "rip", regs->rip, regs->rip);
+    } else if (strcmp(line, "eflags") == 0) {
+        print_eflags(regs->eflags);
+    } else if (strcmp(line, "cs") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "cs", regs->cs, regs->cs);
     } else if (strcmp(line, "ss") == 0) {
-        printf("ss = %#llx\n", regs->ss);
-    } else if (strcmp(line, "fs_base") == 0) {
-        printf("fs_base = %#llx\n", regs->fs_base);
-    } else if (strcmp(line, "gs_base") == 0) {
-        printf("gs_base = %#llx\n", regs->gs_base);
+        printf("%-15s0x%-18llx%lld\n", "ss", regs->ss, regs->ss);
     } else if (strcmp(line, "ds") == 0) {
-        printf("ds = %#llx\n", regs->ds);
+        printf("%-15s0x%-18llx%lld\n", "ds", regs->ds, regs->ds);
     } else if (strcmp(line, "es") == 0) {
-        printf("es = %#llx\n", regs->es);
+        printf("%-15s0x%-18llx%lld\n", "es", regs->es, regs->es);
     } else if (strcmp(line, "fs") == 0) {
-        printf("fs = %#llx\n", regs->fs);
+        printf("%-15s0x%-18llx%lld\n", "fs", regs->fs, regs->fs);
     } else if (strcmp(line, "gs") == 0) {
-        printf("gs = %#llx\n", regs->gs);
+        printf("%-15s0x%-18llx%lld\n", "gs", regs->gs, regs->gs);
     } else {
         return -1;
     }
