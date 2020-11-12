@@ -133,8 +133,8 @@ void print_stack(uint64_t frame_pointer, unsigned char *prev_stack,
     }
 }
 
-void print_eflags(unsigned long long int eflags) {
-    printf("%-15s0x%-18llx%s", "eflags", eflags, "[ ");
+void print_eflags(uint64_t eflags) {
+    printf("%-15s0x%-18lx%s", "eflags", eflags, "[ ");
     if (eflags & EFLAGS_CF) {
         printf("CF ");
     }
