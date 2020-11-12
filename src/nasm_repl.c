@@ -22,6 +22,7 @@ extern void run_child(void);
 
 #define COLOR_RESET "\033[m"
 #define COLOR_STACK_DIFF "\033[1;31m"
+#define COLOR_RSP "\033[1;34m"
 
 enum eflags {
     EFLAGS_CF = 0x00000001,
@@ -94,14 +95,16 @@ int find_nasm(void) {
     return -1;
 }
 
-void print_stack(uint64_t frame_pointer, unsigned char *prev_stack,
-                 unsigned char *stack, size_t size) {
+void print_stack(uint64_t frame_pointer, uint64_t rsp,
+                 unsigned char *prev_stack, unsigned char *stack, size_t size) {
     uint64_t address = frame_pointer - size;
     unsigned char ascii[17] = {0};
 
     printf("%lx  ", address);
-    for (size_t i = 0; i < size; i++) {
-        if (prev_stack[i] != stack[i]) {
+    for (size_t i = 0; i < size; i++, address++) {
+        if (address == rsp) {
+            printf(COLOR_RSP "%02x " COLOR_RESET, stack[i]);
+        } else if (prev_stack[i] != stack[i]) {
             printf(COLOR_STACK_DIFF "%02x " COLOR_RESET, stack[i]);
         } else {
             printf("%02x ", stack[i]);
@@ -117,7 +120,6 @@ void print_stack(uint64_t frame_pointer, unsigned char *prev_stack,
         if ((i + 1) % 16 == 0) {
             printf("|%s|\n", ascii);
             if ((i + 1) != size) {
-                address += 16;
                 printf("%lx  ", address);
             }
         } else if ((i + 1) == size) {
@@ -528,7 +530,8 @@ void run(pid_t pid) {
         rip = prev_regs.rip;
 
         if (strcmp(line, "stack") == 0) {
-            print_stack(frame_pointer, prev_stack, stack, sizeof(stack));
+            print_stack(frame_pointer, prev_regs.rsp, prev_stack, stack,
+                        sizeof(stack));
             linenoiseFree(line);
             continue;
         } else if (strcmp(line, "regs") == 0) {
@@ -553,7 +556,8 @@ void run(pid_t pid) {
         read_registers(pid, &regs);
 
         if (memcmp(prev_stack, stack, sizeof(stack)) != 0) {
-            print_stack(frame_pointer, prev_stack, stack, sizeof(stack));
+            print_stack(frame_pointer, regs.rsp, prev_stack, stack,
+                        sizeof(stack));
         }
 
         if (memcmp(&prev_regs, &regs, sizeof(regs)) != 0) {

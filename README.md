@@ -11,7 +11,7 @@ Type an instruction to execute it. Any register that has changed will be printed
 rax            0xff                255
 ```
 
-Changes to the stack memory will also be printed. Changed bytes are colored in red:
+Changes to the stack memory will also be printed. Changed bytes are colored in red, and the position of rsp is colored in blue (not visible here):
 
 ```
 > mov byte [rsp-1], 0xff
