@@ -27,10 +27,12 @@ Changes to the stack memory will also be printed. Changed bytes are colored in r
 
 It's possible to call functions in the C standard library:
 
+```
 > mov rax, "hello"
 > push rax
 > mov rdi, rsp
 > call puts
+```
 
 It's even possible to call functions in your own libraries by using LD_PRELOAD:
 
@@ -39,7 +41,6 @@ $ cat foo.c
 int square(int num) {
     return num * num;
 }
-
 $ gcc -c -fpic foo.c
 $ gcc -shared -o libfoo.so foo.o
 $ LD_PRELOAD=./libfoo.so ./nasm_repl
