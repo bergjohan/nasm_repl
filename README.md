@@ -2,7 +2,7 @@
 
 A x86-64 assembly REPL for Linux. [NASM](https://nasm.us/) is used to assemble instructions, and [ptrace](https://www.man7.org/linux/man-pages/man2/ptrace.2.html) is used to write and execute them in a child process.
 
-## Commands
+## Features
 
 Type an instruction to execute it. Any register that has changed will be printed.
 
@@ -24,6 +24,30 @@ Changes to the stack memory will also be printed. Changed bytes are colored in r
 7ffe2dfafce8  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
 7ffe2dfafcf8  a0 31 0c 30 8d 7f 00 00  25 00 00 00 00 00 00 ff  |.1.0....%.......|
 ```
+
+It's possible to call functions in the C standard library:
+
+> mov rax, "hello"
+> push rax
+> mov rdi, rsp
+> call puts
+
+It's even possible to call functions in your own libraries by using LD_PRELOAD:
+
+```
+$ cat foo.c
+int square(int num) {
+    return num * num;
+}
+
+$ gcc -c -fpic foo.c
+$ gcc -shared -o libfoo.so foo.o
+$ LD_PRELOAD=./libfoo.so ./nasm_repl
+> mov rdi, 4
+> call square
+```
+
+## Commands
 
 Type a register name to print its value:
 

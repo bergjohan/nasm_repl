@@ -18,4 +18,4 @@ target_compile_options(nasm_repl PRIVATE
   -Wsign-conversion
   >
 )
-target_link_libraries(nasm_repl PRIVATE linenoise)
+target_link_libraries(nasm_repl PRIVATE linenoise ${CMAKE_DL_LIBS})

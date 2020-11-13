@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include <ctype.h>
+#include <dlfcn.h>
 #include <inttypes.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -325,7 +326,7 @@ int handle_reg_command(char *line, struct user_regs_struct *regs) {
     } else if (strcmp(line, "r15") == 0) {
         printf("%-15s0x%-18llx%lld\n", "r15", regs->r15, regs->r15);
     } else if (strcmp(line, "rip") == 0) {
-        printf("%-15s0x%-18llx0x%lld\n", "rip", regs->rip, regs->rip);
+        printf("%-15s0x%-18llx0x%llx\n", "rip", regs->rip, regs->rip);
     } else if (strcmp(line, "eflags") == 0) {
         print_eflags(regs->eflags);
     } else if (strcmp(line, "cs") == 0) {
@@ -383,7 +384,7 @@ void write_instruction(pid_t pid, uint64_t rip, unsigned char *data) {
 }
 
 void execute_instruction(pid_t pid) {
-    if (ptrace(PTRACE_SINGLESTEP, pid, NULL, NULL) == -1) {
+    if (ptrace(PTRACE_CONT, pid, NULL, NULL) == -1) {
         die("ptrace() failed\n");
     }
     if (waitpid(pid, NULL, 0) == -1) {
@@ -396,15 +397,6 @@ void execute_instruction(pid_t pid) {
     }
     if (info.si_signo == SIGSEGV) {
         fprintf(stderr, "Segmentation fault\n");
-    }
-}
-
-void cont(pid_t pid) {
-    if (ptrace(PTRACE_CONT, pid, NULL, NULL) == -1) {
-        die("ptrace() failed\n");
-    }
-    if (waitpid(pid, NULL, 0) == -1) {
-        die("waitpid() failed\n");
     }
 }
 
@@ -426,7 +418,6 @@ int write_all(int fd, const void *buf) {
 
 int write_assembly(int fd, char *line) {
     char *buf;
-
     if (asprintf(&buf, "BITS 64\n%s\n", line) == -1) {
         close(fd);
         return -1;
@@ -445,7 +436,6 @@ int write_assembly(int fd, char *line) {
 
 int run_nasm(char *infile, char *outfile) {
     char command[64];
-
     sprintf(command, "nasm -f bin -o %s %s", outfile, infile);
     if (system(command) != 0) {
         unlink(infile);
@@ -526,9 +516,9 @@ void run(pid_t pid) {
 
         read_stack(pid, frame_pointer, prev_stack, sizeof(prev_stack));
         read_registers(pid, &prev_regs);
-        // Save rip
-        rip = prev_regs.rip;
 
+        uint64_t rbx = 0;
+        unsigned char data[16];
         if (strcmp(line, "stack") == 0) {
             print_stack(frame_pointer, prev_regs.rsp, prev_stack, stack,
                         sizeof(stack));
@@ -536,15 +526,43 @@ void run(pid_t pid) {
             continue;
         } else if (strcmp(line, "regs") == 0) {
             print_regs(&prev_regs);
-            continue;
-        } else if (handle_reg_command(line, &prev_regs) == 0) {
-            continue;
-        }
-
-        unsigned char data[16];
-        if (assemble(line, data, sizeof(data)) == 0) {
             linenoiseFree(line);
             continue;
+        } else if (handle_reg_command(line, &prev_regs) == 0) {
+            linenoiseFree(line);
+            continue;
+        } else if (strncmp(line, "call", 4) == 0) {
+            const char *symbol = line + 4;
+            while (isspace(*symbol)) {
+                symbol++;
+            }
+
+            // Clear any existing error
+            dlerror();
+
+            uint64_t address = (uint64_t)dlsym(RTLD_NEXT, symbol);
+            char *error = dlerror();
+            if (error != NULL) {
+                fprintf(stderr, "%s\n", error);
+                linenoiseFree(line);
+                continue;
+            }
+
+            // Save rbx
+            rbx = prev_regs.rbx;
+
+            prev_regs.rbx = address;
+            write_registers(pid, &prev_regs);
+
+            if (assemble("call rbx", data, sizeof(data)) == 0) {
+                linenoiseFree(line);
+                continue;
+            }
+        } else {
+            if (assemble(line, data, sizeof(data)) == 0) {
+                linenoiseFree(line);
+                continue;
+            }
         }
 
         linenoiseFree(line);
@@ -555,6 +573,13 @@ void run(pid_t pid) {
         read_stack(pid, frame_pointer, stack, sizeof(stack));
         read_registers(pid, &regs);
 
+        // Restore rbx
+        if (rbx != 0 && prev_regs.rbx == regs.rbx) {
+            prev_regs.rbx = rbx;
+            regs.rbx = rbx;
+            write_registers(pid, &regs);
+        }
+
         if (memcmp(prev_stack, stack, sizeof(stack)) != 0) {
             print_stack(frame_pointer, regs.rsp, prev_stack, stack,
                         sizeof(stack));
@@ -563,15 +588,11 @@ void run(pid_t pid) {
         if (memcmp(&prev_regs, &regs, sizeof(regs)) != 0) {
             print_changed_regs(&prev_regs, &regs);
         }
-
-        // Restore rip
-        regs.rip = rip;
-        write_registers(pid, &regs);
     }
 
-    // Move rip to ret instruction
-    rip += 16;
-    cont(pid);
+    // Move rip to ret instruction (16 nop's + one jmp)
+    rip += 16 + 2;
+    execute_instruction(pid);
 }
 
 int main(void) {

@@ -7,4 +7,5 @@ run_child:
     %rep 16
     nop
     %endrep
+    jmp run_child
     ret
