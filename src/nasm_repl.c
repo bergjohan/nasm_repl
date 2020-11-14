@@ -19,7 +19,7 @@ extern void run_child(void);
 
 #define NOP 0x90
 
-#define STACK_PRINT_SIZE 128
+#define STACK_SIZE 128
 
 #define COLOR_RESET "\033[m"
 #define COLOR_STACK_DIFF "\033[1;31m"
@@ -496,8 +496,8 @@ size_t assemble(char *line, unsigned char *data, size_t size) {
 }
 
 void run(pid_t pid) {
-    unsigned char prev_stack[STACK_PRINT_SIZE];
-    unsigned char stack[STACK_PRINT_SIZE];
+    unsigned char prev_stack[STACK_SIZE];
+    unsigned char stack[STACK_SIZE];
     struct user_regs_struct prev_regs;
     struct user_regs_struct regs;
 
