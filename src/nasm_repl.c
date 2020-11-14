@@ -374,11 +374,11 @@ void write_registers(pid_t pid, struct user_regs_struct *regs) {
     }
 }
 
-void write_instruction(pid_t pid, uint64_t rip, unsigned char *data) {
-    if (ptrace(PTRACE_POKEDATA, pid, rip, to_u64(data)) == -1) {
+void write_instruction(pid_t pid, uint64_t address, unsigned char *data) {
+    if (ptrace(PTRACE_POKEDATA, pid, address, to_u64(data)) == -1) {
         die("ptrace() failed\n");
     }
-    if (ptrace(PTRACE_POKEDATA, pid, rip + 8, to_u64(&data[8])) == -1) {
+    if (ptrace(PTRACE_POKEDATA, pid, address + 8, to_u64(&data[8])) == -1) {
         die("ptrace() failed\n");
     }
 }
@@ -510,7 +510,9 @@ void run(pid_t pid) {
     }
 
     read_registers(pid, &regs);
-    uint64_t rip = regs.rip;
+    uint64_t address = (uint64_t)run_child;
+    // Move past the int3 instruction
+    address += 1;
     uint64_t frame_pointer = regs.rsp;
     read_stack(pid, frame_pointer, stack, sizeof(stack));
 
@@ -571,7 +573,7 @@ void run(pid_t pid) {
 
         linenoiseFree(line);
 
-        write_instruction(pid, rip, data);
+        write_instruction(pid, address, data);
         execute_instruction(pid);
 
         read_stack(pid, frame_pointer, stack, sizeof(stack));
