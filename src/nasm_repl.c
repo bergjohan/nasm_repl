@@ -383,13 +383,17 @@ void write_instruction(pid_t pid, uint64_t rip, unsigned char *data) {
     }
 }
 
-void execute_instruction(pid_t pid) {
+void cont(pid_t pid) {
     if (ptrace(PTRACE_CONT, pid, NULL, NULL) == -1) {
         die("ptrace() failed\n");
     }
     if (waitpid(pid, NULL, 0) == -1) {
         die("waitpid() failed\n");
     }
+}
+
+void execute_instruction(pid_t pid) {
+    cont(pid);
 
     siginfo_t info;
     if (ptrace(PTRACE_GETSIGINFO, pid, NULL, &info) == -1) {
@@ -591,8 +595,9 @@ void run(pid_t pid) {
     }
 
     // Move rip to ret instruction (16 nop's + one jmp)
-    rip += 16 + 2;
-    execute_instruction(pid);
+    regs.rip += 16 + 2;
+    write_registers(pid, &regs);
+    cont(pid);
 }
 
 int main(void) {
