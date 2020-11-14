@@ -510,9 +510,7 @@ void run(pid_t pid) {
     }
 
     read_registers(pid, &regs);
-    uint64_t address = (uint64_t)run_child;
-    // Move past the int3 instruction
-    address += 1;
+    uint64_t rip = regs.rip;
     uint64_t frame_pointer = regs.rsp;
     read_stack(pid, frame_pointer, stack, sizeof(stack));
 
@@ -573,7 +571,7 @@ void run(pid_t pid) {
 
         linenoiseFree(line);
 
-        write_instruction(pid, address, data);
+        write_instruction(pid, rip, data);
         execute_instruction(pid);
 
         read_stack(pid, frame_pointer, stack, sizeof(stack));
