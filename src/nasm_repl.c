@@ -596,6 +596,8 @@ void run(pid_t pid) {
 
     // Move rip to ret instruction (16 nop's + one jmp)
     regs.rip += 16 + 2;
+    // Restore stack pointer
+    regs.rsp = frame_pointer;
     write_registers(pid, &regs);
     cont(pid);
 }
