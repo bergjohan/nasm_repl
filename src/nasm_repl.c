@@ -316,6 +316,12 @@ void read_data(pid_t pid, uint64_t frame_pointer, unsigned char *buf,
     }
 }
 
+void write_data(pid_t pid, uint64_t address, uint64_t data) {
+    if (ptrace(PTRACE_POKEDATA, pid, address, data) == -1) {
+        die("ptrace() failed\n");
+    }
+}
+
 void read_registers(pid_t pid, struct user_regs_struct *regs) {
     if (ptrace(PTRACE_GETREGS, pid, NULL, regs) == -1) {
         die("ptrace() failed\n");
@@ -324,12 +330,6 @@ void read_registers(pid_t pid, struct user_regs_struct *regs) {
 
 void write_registers(pid_t pid, struct user_regs_struct *regs) {
     if (ptrace(PTRACE_SETREGS, pid, NULL, regs) == -1) {
-        die("ptrace() failed\n");
-    }
-}
-
-void write_data(pid_t pid, uint64_t address, uint64_t data) {
-    if (ptrace(PTRACE_POKEDATA, pid, address, data) == -1) {
         die("ptrace() failed\n");
     }
 }
