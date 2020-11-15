@@ -45,6 +45,15 @@ enum eflags {
     EFLAGS_ID = 0x00200000
 };
 
+struct state {
+    unsigned char prev_stack[STACK_SIZE];
+    unsigned char stack[STACK_SIZE];
+    struct user_regs_struct prev_regs;
+    struct user_regs_struct regs;
+    uint64_t rip;
+    uint64_t frame_pointer;
+};
+
 void die(const char *fmt, ...) {
     va_list ap;
 
@@ -292,63 +301,8 @@ void print_changed_regs(struct user_regs_struct *prev_regs,
     }
 }
 
-int handle_reg_command(char *line, struct user_regs_struct *regs) {
-    if (strcmp(line, "rax") == 0) {
-        printf("%-15s0x%-18llx%lld\n", "rax", regs->rax, regs->rax);
-    } else if (strcmp(line, "rbx") == 0) {
-        printf("%-15s0x%-18llx%lld\n", "rbx", regs->rbx, regs->rbx);
-    } else if (strcmp(line, "rcx") == 0) {
-        printf("%-15s0x%-18llx%lld\n", "rcx", regs->rcx, regs->rcx);
-    } else if (strcmp(line, "rdx") == 0) {
-        printf("%-15s0x%-18llx%lld\n", "rdx", regs->rdx, regs->rdx);
-    } else if (strcmp(line, "rsi") == 0) {
-        printf("%-15s0x%-18llx%lld\n", "rsi", regs->rsi, regs->rsi);
-    } else if (strcmp(line, "rdi") == 0) {
-        printf("%-15s0x%-18llx%lld\n", "rdi", regs->rdi, regs->rdi);
-    } else if (strcmp(line, "rbp") == 0) {
-        printf("%-15s0x%-18llx0x%llx\n", "rbp", regs->rbp, regs->rbp);
-    } else if (strcmp(line, "rsp") == 0) {
-        printf("%-15s0x%-18llx0x%llx\n", "rsp", regs->rsp, regs->rsp);
-    } else if (strcmp(line, "r8") == 0) {
-        printf("%-15s0x%-18llx%lld\n", "r8", regs->r8, regs->r8);
-    } else if (strcmp(line, "r9") == 0) {
-        printf("%-15s0x%-18llx%lld\n", "r9", regs->r9, regs->r9);
-    } else if (strcmp(line, "r10") == 0) {
-        printf("%-15s0x%-18llx%lld\n", "r10", regs->r10, regs->r10);
-    } else if (strcmp(line, "r11") == 0) {
-        printf("%-15s0x%-18llx%lld\n", "r11", regs->r11, regs->r11);
-    } else if (strcmp(line, "r12") == 0) {
-        printf("%-15s0x%-18llx%lld\n", "r12", regs->r12, regs->r12);
-    } else if (strcmp(line, "r13") == 0) {
-        printf("%-15s0x%-18llx%lld\n", "r13", regs->r13, regs->r13);
-    } else if (strcmp(line, "r14") == 0) {
-        printf("%-15s0x%-18llx%lld\n", "r14", regs->r14, regs->r14);
-    } else if (strcmp(line, "r15") == 0) {
-        printf("%-15s0x%-18llx%lld\n", "r15", regs->r15, regs->r15);
-    } else if (strcmp(line, "rip") == 0) {
-        printf("%-15s0x%-18llx0x%llx\n", "rip", regs->rip, regs->rip);
-    } else if (strcmp(line, "eflags") == 0) {
-        print_eflags(regs->eflags);
-    } else if (strcmp(line, "cs") == 0) {
-        printf("%-15s0x%-18llx%lld\n", "cs", regs->cs, regs->cs);
-    } else if (strcmp(line, "ss") == 0) {
-        printf("%-15s0x%-18llx%lld\n", "ss", regs->ss, regs->ss);
-    } else if (strcmp(line, "ds") == 0) {
-        printf("%-15s0x%-18llx%lld\n", "ds", regs->ds, regs->ds);
-    } else if (strcmp(line, "es") == 0) {
-        printf("%-15s0x%-18llx%lld\n", "es", regs->es, regs->es);
-    } else if (strcmp(line, "fs") == 0) {
-        printf("%-15s0x%-18llx%lld\n", "fs", regs->fs, regs->fs);
-    } else if (strcmp(line, "gs") == 0) {
-        printf("%-15s0x%-18llx%lld\n", "gs", regs->gs, regs->gs);
-    } else {
-        return -1;
-    }
-    return 0;
-}
-
-void read_stack(pid_t pid, uint64_t frame_pointer, unsigned char *buf,
-                size_t size) {
+void read_data(pid_t pid, uint64_t frame_pointer, unsigned char *buf,
+               size_t size) {
     struct iovec local[1];
     local[0].iov_base = buf;
     local[0].iov_len = size;
@@ -374,11 +328,8 @@ void write_registers(pid_t pid, struct user_regs_struct *regs) {
     }
 }
 
-void write_instruction(pid_t pid, uint64_t address, unsigned char *data) {
-    if (ptrace(PTRACE_POKEDATA, pid, address, to_u64(data)) == -1) {
-        die("ptrace() failed\n");
-    }
-    if (ptrace(PTRACE_POKEDATA, pid, address + 8, to_u64(&data[8])) == -1) {
+void write_data(pid_t pid, uint64_t address, uint64_t data) {
+    if (ptrace(PTRACE_POKEDATA, pid, address, data) == -1) {
         die("ptrace() failed\n");
     }
 }
@@ -458,9 +409,6 @@ size_t read_instruction(char *outfile, unsigned char *data, size_t size) {
         die("fopen() failed\n");
     }
 
-    // Pad with nops
-    memset(data, NOP, size);
-
     size_t ret = fread(data, 1, size, fp);
     if (ferror(fp)) {
         fclose(fp);
@@ -495,110 +443,172 @@ size_t assemble(char *line, unsigned char *data, size_t size) {
     return read_instruction(outfile, data, size);
 }
 
-void run(pid_t pid) {
-    unsigned char prev_stack[STACK_SIZE];
-    unsigned char stack[STACK_SIZE];
-    struct user_regs_struct prev_regs;
-    struct user_regs_struct regs;
+void handle_asm_command(pid_t pid, char *line, struct state *state) {
+    uint64_t rbx = 0;
+    unsigned char data[16];
+    size_t size;
 
+    if (strncmp(line, "call", 4) == 0) {
+        const char *symbol = line + 4;
+        while (isspace(*symbol)) {
+            symbol++;
+        }
+
+        // Clear any existing error
+        dlerror();
+
+        uint64_t address = (uint64_t)dlsym(RTLD_NEXT, symbol);
+        char *error = dlerror();
+        if (error != NULL) {
+            fprintf(stderr, "%s\n", error);
+            return;
+        }
+
+        // Save rbx
+        rbx = state->prev_regs.rbx;
+
+        // Load rbx with address of symbol
+        state->prev_regs.rbx = address;
+        write_registers(pid, &state->prev_regs);
+
+        size = assemble("call rbx", data, sizeof(data));
+        if (size == 0) {
+            return;
+        }
+    } else {
+        size = assemble(line, data, sizeof(data));
+        if (size == 0) {
+            return;
+        }
+    }
+
+    // Pad with nops
+    memset(data + size, NOP, sizeof(data) - size);
+
+    // Write instruction
+    write_data(pid, state->rip, to_u64(data));
+    write_data(pid, state->rip + 8, to_u64(&data[8]));
+
+    execute_instruction(pid);
+
+    read_data(pid, state->frame_pointer, state->stack, sizeof(state->stack));
+    read_registers(pid, &state->regs);
+
+    // Restore rbx
+    if (rbx != 0 && state->prev_regs.rbx == state->regs.rbx) {
+        state->prev_regs.rbx = rbx;
+        state->regs.rbx = rbx;
+        write_registers(pid, &state->regs);
+    }
+
+    if (memcmp(state->prev_stack, state->stack, sizeof(state->stack)) != 0) {
+        print_stack(state->frame_pointer, state->regs.rsp, state->prev_stack,
+                    state->stack, sizeof(state->stack));
+    }
+
+    if (memcmp(&state->prev_regs, &state->regs, sizeof(state->regs)) != 0) {
+        print_changed_regs(&state->prev_regs, &state->regs);
+    }
+}
+
+void handle_command(pid_t pid, char *line, struct state *state) {
+    read_data(pid, state->frame_pointer, state->prev_stack,
+              sizeof(state->prev_stack));
+    read_registers(pid, &state->prev_regs);
+
+    if (strcmp(line, "stack") == 0) {
+        print_stack(state->frame_pointer, state->prev_regs.rsp,
+                    state->prev_stack, state->stack, sizeof(state->stack));
+    } else if (strcmp(line, "regs") == 0) {
+        print_regs(&state->prev_regs);
+    } else if (strcmp(line, "rax") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "rax", state->regs.rax, state->regs.rax);
+    } else if (strcmp(line, "rbx") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "rbx", state->regs.rbx, state->regs.rbx);
+    } else if (strcmp(line, "rcx") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "rcx", state->regs.rcx, state->regs.rcx);
+    } else if (strcmp(line, "rdx") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "rdx", state->regs.rdx, state->regs.rdx);
+    } else if (strcmp(line, "rsi") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "rsi", state->regs.rsi, state->regs.rsi);
+    } else if (strcmp(line, "rdi") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "rdi", state->regs.rdi, state->regs.rdi);
+    } else if (strcmp(line, "rbp") == 0) {
+        printf("%-15s0x%-18llx0x%llx\n", "rbp", state->regs.rbp,
+               state->regs.rbp);
+    } else if (strcmp(line, "rsp") == 0) {
+        printf("%-15s0x%-18llx0x%llx\n", "rsp", state->regs.rsp,
+               state->regs.rsp);
+    } else if (strcmp(line, "r8") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "r8", state->regs.r8, state->regs.r8);
+    } else if (strcmp(line, "r9") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "r9", state->regs.r9, state->regs.r9);
+    } else if (strcmp(line, "r10") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "r10", state->regs.r10, state->regs.r10);
+    } else if (strcmp(line, "r11") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "r11", state->regs.r11, state->regs.r11);
+    } else if (strcmp(line, "r12") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "r12", state->regs.r12, state->regs.r12);
+    } else if (strcmp(line, "r13") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "r13", state->regs.r13, state->regs.r13);
+    } else if (strcmp(line, "r14") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "r14", state->regs.r14, state->regs.r14);
+    } else if (strcmp(line, "r15") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "r15", state->regs.r15, state->regs.r15);
+    } else if (strcmp(line, "rip") == 0) {
+        printf("%-15s0x%-18llx0x%llx\n", "rip", state->regs.rip,
+               state->regs.rip);
+    } else if (strcmp(line, "eflags") == 0) {
+        print_eflags(state->regs.eflags);
+    } else if (strcmp(line, "cs") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "cs", state->regs.cs, state->regs.cs);
+    } else if (strcmp(line, "ss") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "ss", state->regs.ss, state->regs.ss);
+    } else if (strcmp(line, "ds") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "ds", state->regs.ds, state->regs.ds);
+    } else if (strcmp(line, "es") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "es", state->regs.es, state->regs.es);
+    } else if (strcmp(line, "fs") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "fs", state->regs.fs, state->regs.fs);
+    } else if (strcmp(line, "gs") == 0) {
+        printf("%-15s0x%-18llx%lld\n", "gs", state->regs.gs, state->regs.gs);
+    } else {
+        handle_asm_command(pid, line, state);
+    }
+}
+
+void init_state(pid_t pid, struct state *state) {
     // Since we'll be using memcmp
-    memset(&prev_regs, 0, sizeof(prev_regs));
-    memset(&regs, 0, sizeof(regs));
+    memset(&state->prev_regs, 0, sizeof(state->prev_regs));
+    memset(&state->regs, 0, sizeof(state->regs));
 
+    read_registers(pid, &state->regs);
+    state->rip = state->regs.rip;
+    state->frame_pointer = state->regs.rsp;
+
+    read_data(pid, state->frame_pointer, state->stack, sizeof(state->stack));
+}
+
+void run(pid_t pid) {
     if (waitpid(pid, NULL, 0) == -1) {
         die("waitpid() failed\n");
     }
 
-    read_registers(pid, &regs);
-    uint64_t rip = regs.rip;
-    uint64_t frame_pointer = regs.rsp;
-    read_stack(pid, frame_pointer, stack, sizeof(stack));
+    struct state state;
+    init_state(pid, &state);
 
     char *line;
     while ((line = linenoise("> ")) != NULL) {
         linenoiseHistoryAdd(line);
-
-        read_stack(pid, frame_pointer, prev_stack, sizeof(prev_stack));
-        read_registers(pid, &prev_regs);
-
-        uint64_t rbx = 0;
-        unsigned char data[16];
-        if (strcmp(line, "stack") == 0) {
-            print_stack(frame_pointer, prev_regs.rsp, prev_stack, stack,
-                        sizeof(stack));
-            linenoiseFree(line);
-            continue;
-        } else if (strcmp(line, "regs") == 0) {
-            print_regs(&prev_regs);
-            linenoiseFree(line);
-            continue;
-        } else if (handle_reg_command(line, &prev_regs) == 0) {
-            linenoiseFree(line);
-            continue;
-        } else if (strncmp(line, "call", 4) == 0) {
-            const char *symbol = line + 4;
-            while (isspace(*symbol)) {
-                symbol++;
-            }
-
-            // Clear any existing error
-            dlerror();
-
-            uint64_t address = (uint64_t)dlsym(RTLD_NEXT, symbol);
-            char *error = dlerror();
-            if (error != NULL) {
-                fprintf(stderr, "%s\n", error);
-                linenoiseFree(line);
-                continue;
-            }
-
-            // Save rbx
-            rbx = prev_regs.rbx;
-
-            prev_regs.rbx = address;
-            write_registers(pid, &prev_regs);
-
-            if (assemble("call rbx", data, sizeof(data)) == 0) {
-                linenoiseFree(line);
-                continue;
-            }
-        } else {
-            if (assemble(line, data, sizeof(data)) == 0) {
-                linenoiseFree(line);
-                continue;
-            }
-        }
-
+        handle_command(pid, line, &state);
         linenoiseFree(line);
-
-        write_instruction(pid, rip, data);
-        execute_instruction(pid);
-
-        read_stack(pid, frame_pointer, stack, sizeof(stack));
-        read_registers(pid, &regs);
-
-        // Restore rbx
-        if (rbx != 0 && prev_regs.rbx == regs.rbx) {
-            prev_regs.rbx = rbx;
-            regs.rbx = rbx;
-            write_registers(pid, &regs);
-        }
-
-        if (memcmp(prev_stack, stack, sizeof(stack)) != 0) {
-            print_stack(frame_pointer, regs.rsp, prev_stack, stack,
-                        sizeof(stack));
-        }
-
-        if (memcmp(&prev_regs, &regs, sizeof(regs)) != 0) {
-            print_changed_regs(&prev_regs, &regs);
-        }
     }
 
-    // Move rip to ret instruction (16 nop's + one jmp)
-    regs.rip += 16 + 2;
+    // Move rip to ret instruction (16 nops + one jmp)
+    state.regs.rip += 16 + 2;
     // Restore stack pointer
-    regs.rsp = frame_pointer;
-    write_registers(pid, &regs);
+    state.regs.rsp = state.frame_pointer;
+    write_registers(pid, &state.regs);
     cont(pid);
 }
 
