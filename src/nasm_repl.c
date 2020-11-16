@@ -25,6 +25,11 @@ extern void run_child(void);
 #define COLOR_STACK_DIFF "\033[1;31m"
 #define COLOR_RSP "\033[1;34m"
 
+// Must be a power of two
+#define MAP_CAPACITY 32
+
+typedef char command_name[16];
+
 enum eflags {
     EFLAGS_CF = 0x00000001,
     EFLAGS_PF = 0x00000004,
@@ -45,6 +50,36 @@ enum eflags {
     EFLAGS_ID = 0x00200000
 };
 
+enum command_type {
+    COMMAND_UNKNOWN,
+    COMMAND_STACK,
+    COMMAND_REGS,
+    COMMAND_RAX,
+    COMMAND_RBX,
+    COMMAND_RCX,
+    COMMAND_RDX,
+    COMMAND_RSI,
+    COMMAND_RDI,
+    COMMAND_RBP,
+    COMMAND_RSP,
+    COMMAND_R8,
+    COMMAND_R9,
+    COMMAND_R10,
+    COMMAND_R11,
+    COMMAND_R12,
+    COMMAND_R13,
+    COMMAND_R14,
+    COMMAND_R15,
+    COMMAND_RIP,
+    COMMAND_EFLAGS,
+    COMMAND_CS,
+    COMMAND_SS,
+    COMMAND_DS,
+    COMMAND_ES,
+    COMMAND_FS,
+    COMMAND_GS
+};
+
 struct state {
     unsigned char prev_stack[STACK_SIZE];
     unsigned char stack[STACK_SIZE];
@@ -53,6 +88,13 @@ struct state {
     uint64_t rip;
     uint64_t frame_pointer;
 };
+
+struct map {
+    command_name name[MAP_CAPACITY];
+    enum command_type type[MAP_CAPACITY];
+};
+
+static struct map map;
 
 void die(const char *fmt, ...) {
     va_list ap;
@@ -69,6 +111,23 @@ uint64_t to_u64(unsigned char *data) {
            (uint64_t)data[2] << 16 | (uint64_t)data[3] << 24 |
            (uint64_t)data[4] << 32 | (uint64_t)data[5] << 40 |
            (uint64_t)data[6] << 48 | (uint64_t)data[7] << 56;
+}
+
+char *skip_whitespace(char *str) {
+    while (isspace(*str)) {
+        str++;
+    }
+    return str;
+}
+
+char *skip_until(char *str, char c) {
+    while (*str) {
+        if (*str == c) {
+            break;
+        }
+        str++;
+    }
+    return str;
 }
 
 int find_nasm(void) {
@@ -301,6 +360,74 @@ void print_changed_regs(struct user_regs_struct *prev_regs,
     }
 }
 
+uint32_t fnv1a(char *str) {
+    unsigned char *s = (unsigned char *)str;
+    uint32_t hash = 0;
+
+    while (*s) {
+        hash ^= (uint32_t)*s++;
+        hash *= 0x01000193;
+    }
+    return hash;
+}
+
+void add_command(char *name, enum command_type type) {
+    uint32_t i = fnv1a(name);
+
+    for (;;) {
+        i &= MAP_CAPACITY - 1;
+        if (map.name[i][0] == '\0') {
+            strcpy(map.name[i], name);
+            map.type[i] = type;
+            return;
+        }
+        i++;
+    }
+}
+
+enum command_type find_command(char *name) {
+    uint32_t i = fnv1a(name);
+
+    for (;;) {
+        i &= MAP_CAPACITY - 1;
+        if (strcmp(name, map.name[i]) == 0) {
+            return map.type[i];
+        } else if (map.name[i][0] == '\0') {
+            return COMMAND_UNKNOWN;
+        }
+        i++;
+    }
+}
+
+void init_commands(void) {
+    add_command("stack", COMMAND_STACK);
+    add_command("regs", COMMAND_REGS);
+    add_command("rax", COMMAND_RAX);
+    add_command("rbx", COMMAND_RBX);
+    add_command("rcx", COMMAND_RCX);
+    add_command("rdx", COMMAND_RDX);
+    add_command("rsi", COMMAND_RSI);
+    add_command("rdi", COMMAND_RDI);
+    add_command("rbp", COMMAND_RBP);
+    add_command("rsp", COMMAND_RSP);
+    add_command("r8", COMMAND_R8);
+    add_command("r9", COMMAND_R9);
+    add_command("r10", COMMAND_R10);
+    add_command("r11", COMMAND_R11);
+    add_command("r12", COMMAND_R12);
+    add_command("r13", COMMAND_R13);
+    add_command("r14", COMMAND_R14);
+    add_command("r15", COMMAND_R15);
+    add_command("rip", COMMAND_RIP);
+    add_command("eflags", COMMAND_EFLAGS);
+    add_command("cs", COMMAND_CS);
+    add_command("ss", COMMAND_SS);
+    add_command("ds", COMMAND_DS);
+    add_command("es", COMMAND_ES);
+    add_command("fs", COMMAND_FS);
+    add_command("gs", COMMAND_GS);
+}
+
 void read_data(pid_t pid, uint64_t frame_pointer, unsigned char *buf,
                size_t size) {
     struct iovec local[1];
@@ -448,11 +575,9 @@ void handle_asm_command(pid_t pid, char *line, struct state *state) {
     unsigned char data[16];
     size_t size;
 
-    if (strncmp(line, "call", 4) == 0) {
-        const char *symbol = line + 4;
-        while (isspace(*symbol)) {
-            symbol++;
-        }
+    if (strncmp(line, "call ", 5) == 0) {
+        char *symbol = line + 5;
+        symbol = skip_whitespace(symbol);
 
         // Clear any existing error
         dlerror();
@@ -516,64 +641,107 @@ void handle_command(pid_t pid, char *line, struct state *state) {
               sizeof(state->prev_stack));
     read_registers(pid, &state->prev_regs);
 
-    if (strcmp(line, "stack") == 0) {
+    // Trim leading whitespace
+    line = skip_whitespace(line);
+    char *start = line;
+    // Move to end of token
+    line = skip_until(line, ' ');
+    char *end = line;
+    // Trim trailing whitespace
+    line = skip_whitespace(line);
+    enum command_type type = COMMAND_UNKNOWN;
+    // Don't allow trailing tokens
+    if (*line == '\0') {
+        *end = '\0';
+        type = find_command(start);
+    }
+
+    switch (type) {
+    case COMMAND_STACK:
         print_stack(state->frame_pointer, state->prev_regs.rsp,
                     state->prev_stack, state->stack, sizeof(state->stack));
-    } else if (strcmp(line, "regs") == 0) {
+        break;
+    case COMMAND_REGS:
         print_regs(&state->prev_regs);
-    } else if (strcmp(line, "rax") == 0) {
+        break;
+    case COMMAND_RAX:
         printf("%-15s0x%-18llx%lld\n", "rax", state->regs.rax, state->regs.rax);
-    } else if (strcmp(line, "rbx") == 0) {
+        break;
+    case COMMAND_RBX:
         printf("%-15s0x%-18llx%lld\n", "rbx", state->regs.rbx, state->regs.rbx);
-    } else if (strcmp(line, "rcx") == 0) {
+        break;
+    case COMMAND_RCX:
         printf("%-15s0x%-18llx%lld\n", "rcx", state->regs.rcx, state->regs.rcx);
-    } else if (strcmp(line, "rdx") == 0) {
+        break;
+    case COMMAND_RDX:
         printf("%-15s0x%-18llx%lld\n", "rdx", state->regs.rdx, state->regs.rdx);
-    } else if (strcmp(line, "rsi") == 0) {
+        break;
+    case COMMAND_RSI:
         printf("%-15s0x%-18llx%lld\n", "rsi", state->regs.rsi, state->regs.rsi);
-    } else if (strcmp(line, "rdi") == 0) {
+        break;
+    case COMMAND_RDI:
         printf("%-15s0x%-18llx%lld\n", "rdi", state->regs.rdi, state->regs.rdi);
-    } else if (strcmp(line, "rbp") == 0) {
+        break;
+    case COMMAND_RBP:
         printf("%-15s0x%-18llx0x%llx\n", "rbp", state->regs.rbp,
                state->regs.rbp);
-    } else if (strcmp(line, "rsp") == 0) {
+        break;
+    case COMMAND_RSP:
         printf("%-15s0x%-18llx0x%llx\n", "rsp", state->regs.rsp,
                state->regs.rsp);
-    } else if (strcmp(line, "r8") == 0) {
+        break;
+    case COMMAND_R8:
         printf("%-15s0x%-18llx%lld\n", "r8", state->regs.r8, state->regs.r8);
-    } else if (strcmp(line, "r9") == 0) {
+        break;
+    case COMMAND_R9:
         printf("%-15s0x%-18llx%lld\n", "r9", state->regs.r9, state->regs.r9);
-    } else if (strcmp(line, "r10") == 0) {
+        break;
+    case COMMAND_R10:
         printf("%-15s0x%-18llx%lld\n", "r10", state->regs.r10, state->regs.r10);
-    } else if (strcmp(line, "r11") == 0) {
+        break;
+    case COMMAND_R11:
         printf("%-15s0x%-18llx%lld\n", "r11", state->regs.r11, state->regs.r11);
-    } else if (strcmp(line, "r12") == 0) {
+        break;
+    case COMMAND_R12:
         printf("%-15s0x%-18llx%lld\n", "r12", state->regs.r12, state->regs.r12);
-    } else if (strcmp(line, "r13") == 0) {
+        break;
+    case COMMAND_R13:
         printf("%-15s0x%-18llx%lld\n", "r13", state->regs.r13, state->regs.r13);
-    } else if (strcmp(line, "r14") == 0) {
+        break;
+    case COMMAND_R14:
         printf("%-15s0x%-18llx%lld\n", "r14", state->regs.r14, state->regs.r14);
-    } else if (strcmp(line, "r15") == 0) {
+        break;
+    case COMMAND_R15:
         printf("%-15s0x%-18llx%lld\n", "r15", state->regs.r15, state->regs.r15);
-    } else if (strcmp(line, "rip") == 0) {
+        break;
+    case COMMAND_RIP:
         printf("%-15s0x%-18llx0x%llx\n", "rip", state->regs.rip,
                state->regs.rip);
-    } else if (strcmp(line, "eflags") == 0) {
+        break;
+    case COMMAND_EFLAGS:
         print_eflags(state->regs.eflags);
-    } else if (strcmp(line, "cs") == 0) {
+        break;
+    case COMMAND_CS:
         printf("%-15s0x%-18llx%lld\n", "cs", state->regs.cs, state->regs.cs);
-    } else if (strcmp(line, "ss") == 0) {
+        break;
+    case COMMAND_SS:
         printf("%-15s0x%-18llx%lld\n", "ss", state->regs.ss, state->regs.ss);
-    } else if (strcmp(line, "ds") == 0) {
+        break;
+    case COMMAND_DS:
         printf("%-15s0x%-18llx%lld\n", "ds", state->regs.ds, state->regs.ds);
-    } else if (strcmp(line, "es") == 0) {
+        break;
+    case COMMAND_ES:
         printf("%-15s0x%-18llx%lld\n", "es", state->regs.es, state->regs.es);
-    } else if (strcmp(line, "fs") == 0) {
+        break;
+    case COMMAND_FS:
         printf("%-15s0x%-18llx%lld\n", "fs", state->regs.fs, state->regs.fs);
-    } else if (strcmp(line, "gs") == 0) {
+        break;
+    case COMMAND_GS:
         printf("%-15s0x%-18llx%lld\n", "gs", state->regs.gs, state->regs.gs);
-    } else {
-        handle_asm_command(pid, line, state);
+        break;
+    default:
+        handle_asm_command(pid, start, state);
+        break;
     }
 }
 
@@ -596,6 +764,8 @@ void run(pid_t pid) {
 
     struct state state;
     init_state(pid, &state);
+
+    init_commands();
 
     char *line;
     while ((line = linenoise("> ")) != NULL) {
