@@ -469,6 +469,7 @@ char *parse_call(void) {
     size_t size = (size_t)(tok.end - tok.start);
 
     next_token();
+    // No trailing tokens
     if (tok.kind != TOK_EOF) {
         return NULL;
     }
@@ -554,6 +555,7 @@ void handle_command(pid_t pid, struct state *state, char *line) {
 
     next_token();
     enum token_kind kind = tok.kind;
+    // No trailing tokens except for call
     if (kind != TOK_CALL) {
         next_token();
         if (tok.kind != TOK_EOF) {
@@ -722,6 +724,7 @@ void run(pid_t pid) {
 
     char *line;
     while ((line = linenoise("> ")) != NULL) {
+        // Init lexer
         ptr = line;
         linenoiseHistoryAdd(line);
         handle_command(pid, &state, line);
