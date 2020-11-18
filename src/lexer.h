@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stddef.h>
+
 enum token_kind {
     TOK_UNKNOWN,
     TOK_EOF,
@@ -53,7 +55,7 @@ enum token_kind {
 
 struct token {
     char *start;
-    char *end;
+    size_t size;
     enum token_kind kind;
 };
 

@@ -466,7 +466,7 @@ char *parse_call(void) {
     }
 
     char *start = tok.start;
-    size_t size = (size_t)(tok.end - tok.start);
+    size_t size = tok.size;
 
     next_token();
     // No trailing tokens
@@ -500,6 +500,8 @@ void handle_asm_command(pid_t pid, struct state *state, char *line) {
             fprintf(stderr, "%s\n", error);
             return;
         }
+
+        free(symbol);
 
         // Save rbx
         rbx = state->prev_regs.rbx;

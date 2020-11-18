@@ -70,8 +70,8 @@ void next_token(void) {
         while (*ptr && *ptr != ' ') {
             ptr++;
         }
-        tok.end = ptr;
-        tok.kind = find_command(tok.start, (size_t)(tok.end - tok.start));
+        tok.size = (size_t)(ptr - tok.start);
+        tok.kind = find_command(tok.start, tok.size);
     }
 }
 
