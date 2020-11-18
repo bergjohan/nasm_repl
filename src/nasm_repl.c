@@ -202,103 +202,111 @@ void print_eflags(uint64_t eflags) {
     printf("]\n");
 }
 
+void print_reg64(char *name, uint64_t reg) {
+    printf("%-15s0x%-18lx%ld\n", name, reg, reg);
+}
+
+void print_reg64_addr(char *name, uint64_t reg) {
+    printf("%-15s0x%-18lx0x%lx\n", name, reg, reg);
+}
+
 void print_regs(struct user_regs_struct *regs) {
-    printf("%-15s0x%-18llx%lld\n", "rax", regs->rax, regs->rax);
-    printf("%-15s0x%-18llx%lld\n", "rbx", regs->rbx, regs->rbx);
-    printf("%-15s0x%-18llx%lld\n", "rcx", regs->rcx, regs->rcx);
-    printf("%-15s0x%-18llx%lld\n", "rdx", regs->rdx, regs->rdx);
-    printf("%-15s0x%-18llx%lld\n", "rsi", regs->rsi, regs->rsi);
-    printf("%-15s0x%-18llx%lld\n", "rdi", regs->rdi, regs->rdi);
-    printf("%-15s0x%-18llx0x%llx\n", "rbp", regs->rbp, regs->rbp);
-    printf("%-15s0x%-18llx0x%llx\n", "rsp", regs->rsp, regs->rsp);
-    printf("%-15s0x%-18llx%lld\n", "r8", regs->r8, regs->r8);
-    printf("%-15s0x%-18llx%lld\n", "r9", regs->r9, regs->r9);
-    printf("%-15s0x%-18llx%lld\n", "r10", regs->r10, regs->r10);
-    printf("%-15s0x%-18llx%lld\n", "r11", regs->r11, regs->r11);
-    printf("%-15s0x%-18llx%lld\n", "r12", regs->r12, regs->r12);
-    printf("%-15s0x%-18llx%lld\n", "r13", regs->r13, regs->r13);
-    printf("%-15s0x%-18llx%lld\n", "r14", regs->r14, regs->r14);
-    printf("%-15s0x%-18llx%lld\n", "r15", regs->r15, regs->r15);
-    printf("%-15s0x%-18llx0x%llx\n", "rip", regs->rip, regs->rip);
+    print_reg64("rax", regs->rax);
+    print_reg64("rbx", regs->rbx);
+    print_reg64("rcx", regs->rcx);
+    print_reg64("rdx", regs->rdx);
+    print_reg64("rsi", regs->rsi);
+    print_reg64("rdi", regs->rdi);
+    print_reg64_addr("rbp", regs->rbp);
+    print_reg64_addr("rsp", regs->rsp);
+    print_reg64("r8", regs->r8);
+    print_reg64("r9", regs->r9);
+    print_reg64("r10", regs->r10);
+    print_reg64("r11", regs->r11);
+    print_reg64("r12", regs->r12);
+    print_reg64("r13", regs->r13);
+    print_reg64("r14", regs->r14);
+    print_reg64("r15", regs->r15);
+    print_reg64_addr("rip", regs->rip);
     print_eflags(regs->eflags);
-    printf("%-15s0x%-18llx%lld\n", "cs", regs->cs, regs->cs);
-    printf("%-15s0x%-18llx%lld\n", "ss", regs->ss, regs->ss);
-    printf("%-15s0x%-18llx%lld\n", "ds", regs->ds, regs->ds);
-    printf("%-15s0x%-18llx%lld\n", "es", regs->es, regs->es);
-    printf("%-15s0x%-18llx%lld\n", "fs", regs->fs, regs->fs);
-    printf("%-15s0x%-18llx%lld\n", "gs", regs->gs, regs->gs);
+    print_reg64("cs", regs->cs);
+    print_reg64("ss", regs->ss);
+    print_reg64("ds", regs->ds);
+    print_reg64("es", regs->es);
+    print_reg64("fs", regs->fs);
+    print_reg64("gs", regs->gs);
 }
 
 void print_changed_regs(struct user_regs_struct *prev_regs,
                         struct user_regs_struct *regs) {
     if (prev_regs->rax != regs->rax) {
-        printf("%-15s0x%-18llx%lld\n", "rax", regs->rax, regs->rax);
+        print_reg64("rax", regs->rax);
     }
     if (prev_regs->rbx != regs->rbx) {
-        printf("%-15s0x%-18llx%lld\n", "rbx", regs->rbx, regs->rbx);
+        print_reg64("rbx", regs->rbx);
     }
     if (prev_regs->rcx != regs->rcx) {
-        printf("%-15s0x%-18llx%lld\n", "rcx", regs->rcx, regs->rcx);
+        print_reg64("rcx", regs->rcx);
     }
     if (prev_regs->rdx != regs->rdx) {
-        printf("%-15s0x%-18llx%lld\n", "rdx", regs->rdx, regs->rdx);
+        print_reg64("rdx", regs->rdx);
     }
     if (prev_regs->rsi != regs->rsi) {
-        printf("%-15s0x%-18llx%lld\n", "rsi", regs->rsi, regs->rsi);
+        print_reg64("rsi", regs->rsi);
     }
     if (prev_regs->rdi != regs->rdi) {
-        printf("%-15s0x%-18llx%lld\n", "rdi", regs->rdi, regs->rdi);
+        print_reg64("rdi", regs->rdi);
     }
     if (prev_regs->rbp != regs->rbp) {
-        printf("%-15s0x%-18llx0x%llx\n", "rbp", regs->rbp, regs->rbp);
+        print_reg64_addr("rbp", regs->rbp);
     }
     if (prev_regs->rsp != regs->rsp) {
-        printf("%-15s0x%-18llx0x%llx\n", "rsp", regs->rsp, regs->rsp);
+        print_reg64_addr("rsp", regs->rsp);
     }
     if (prev_regs->r8 != regs->r8) {
-        printf("%-15s0x%-18llx%lld\n", "r8", regs->r8, regs->r8);
+        print_reg64("r8", regs->r8);
     }
     if (prev_regs->r9 != regs->r9) {
-        printf("%-15s0x%-18llx%lld\n", "r9", regs->r9, regs->r9);
+        print_reg64("r9", regs->r9);
     }
     if (prev_regs->r10 != regs->r10) {
-        printf("%-15s0x%-18llx%lld\n", "r10", regs->r10, regs->r10);
+        print_reg64("r10", regs->r10);
     }
     if (prev_regs->r11 != regs->r11) {
-        printf("%-15s0x%-18llx%lld\n", "r11", regs->r11, regs->r11);
+        print_reg64("r11", regs->r11);
     }
     if (prev_regs->r12 != regs->r12) {
-        printf("%-15s0x%-18llx%lld\n", "r12", regs->r12, regs->r12);
+        print_reg64("r12", regs->r12);
     }
     if (prev_regs->r13 != regs->r13) {
-        printf("%-15s0x%-18llx%lld\n", "r13", regs->r13, regs->r13);
+        print_reg64("r13", regs->r13);
     }
     if (prev_regs->r14 != regs->r14) {
-        printf("%-15s0x%-18llx%lld\n", "r14", regs->r14, regs->r14);
+        print_reg64("r14", regs->r14);
     }
     if (prev_regs->r15 != regs->r15) {
-        printf("%-15s0x%-18llx%lld\n", "r15", regs->r15, regs->r15);
+        print_reg64("r15", regs->r15);
     }
     if (prev_regs->eflags != regs->eflags) {
         print_eflags(regs->eflags);
     }
     if (prev_regs->cs != regs->cs) {
-        printf("%-15s0x%-18llx%lld\n", "cs", regs->cs, regs->cs);
+        print_reg64("cs", regs->cs);
     }
     if (prev_regs->ss != regs->ss) {
-        printf("%-15s0x%-18llx%lld\n", "ss", regs->ss, regs->ss);
+        print_reg64("ss", regs->ss);
     }
     if (prev_regs->ds != regs->ds) {
-        printf("%-15s0x%-18llx%lld\n", "ds", regs->ds, regs->ds);
+        print_reg64("ds", regs->ds);
     }
     if (prev_regs->es != regs->es) {
-        printf("%-15s0x%-18llx%lld\n", "es", regs->es, regs->es);
+        print_reg64("es", regs->es);
     }
     if (prev_regs->fs != regs->fs) {
-        printf("%-15s0x%-18llx%lld\n", "fs", regs->fs, regs->fs);
+        print_reg64("fs", regs->fs);
     }
     if (prev_regs->gs != regs->gs) {
-        printf("%-15s0x%-18llx%lld\n", "gs", regs->gs, regs->gs);
+        print_reg64("gs", regs->gs);
     }
 }
 
@@ -554,79 +562,76 @@ void handle_command(pid_t pid, struct state *state, char *line) {
         print_regs(&state->prev_regs);
         break;
     case TOK_RAX:
-        printf("%-15s0x%-18llx%lld\n", "rax", state->regs.rax, state->regs.rax);
+        print_reg64("rax", state->regs.rax);
         break;
     case TOK_RBX:
-        printf("%-15s0x%-18llx%lld\n", "rbx", state->regs.rbx, state->regs.rbx);
+        print_reg64("rbx", state->regs.rbx);
         break;
     case TOK_RCX:
-        printf("%-15s0x%-18llx%lld\n", "rcx", state->regs.rcx, state->regs.rcx);
+        print_reg64("rcx", state->regs.rcx);
         break;
     case TOK_RDX:
-        printf("%-15s0x%-18llx%lld\n", "rdx", state->regs.rdx, state->regs.rdx);
+        print_reg64("rdx", state->regs.rdx);
         break;
     case TOK_RSI:
-        printf("%-15s0x%-18llx%lld\n", "rsi", state->regs.rsi, state->regs.rsi);
+        print_reg64("rsi", state->regs.rsi);
         break;
     case TOK_RDI:
-        printf("%-15s0x%-18llx%lld\n", "rdi", state->regs.rdi, state->regs.rdi);
+        print_reg64("rdi", state->regs.rdi);
         break;
     case TOK_RBP:
-        printf("%-15s0x%-18llx0x%llx\n", "rbp", state->regs.rbp,
-               state->regs.rbp);
+        print_reg64_addr("rbp", state->regs.rbp);
         break;
     case TOK_RSP:
-        printf("%-15s0x%-18llx0x%llx\n", "rsp", state->regs.rsp,
-               state->regs.rsp);
+        print_reg64_addr("rsp", state->regs.rsp);
         break;
     case TOK_R8:
-        printf("%-15s0x%-18llx%lld\n", "r8", state->regs.r8, state->regs.r8);
+        print_reg64("r8", state->regs.r8);
         break;
     case TOK_R9:
-        printf("%-15s0x%-18llx%lld\n", "r9", state->regs.r9, state->regs.r9);
+        print_reg64("r9", state->regs.r9);
         break;
     case TOK_R10:
-        printf("%-15s0x%-18llx%lld\n", "r10", state->regs.r10, state->regs.r10);
+        print_reg64("r10", state->regs.r10);
         break;
     case TOK_R11:
-        printf("%-15s0x%-18llx%lld\n", "r11", state->regs.r11, state->regs.r11);
+        print_reg64("r11", state->regs.r11);
         break;
     case TOK_R12:
-        printf("%-15s0x%-18llx%lld\n", "r12", state->regs.r12, state->regs.r12);
+        print_reg64("r12", state->regs.r12);
         break;
     case TOK_R13:
-        printf("%-15s0x%-18llx%lld\n", "r13", state->regs.r13, state->regs.r13);
+        print_reg64("r13", state->regs.r13);
         break;
     case TOK_R14:
-        printf("%-15s0x%-18llx%lld\n", "r14", state->regs.r14, state->regs.r14);
+        print_reg64("r14", state->regs.r14);
         break;
     case TOK_R15:
-        printf("%-15s0x%-18llx%lld\n", "r15", state->regs.r15, state->regs.r15);
+        print_reg64("r15", state->regs.r15);
         break;
     case TOK_RIP:
-        printf("%-15s0x%-18llx0x%llx\n", "rip", state->regs.rip,
-               state->regs.rip);
+        print_reg64_addr("rip", state->regs.rip);
         break;
     case TOK_EFLAGS:
         print_eflags(state->regs.eflags);
         break;
     case TOK_CS:
-        printf("%-15s0x%-18llx%lld\n", "cs", state->regs.cs, state->regs.cs);
+        print_reg64("cs", state->regs.cs);
         break;
     case TOK_SS:
-        printf("%-15s0x%-18llx%lld\n", "ss", state->regs.ss, state->regs.ss);
+        print_reg64("ss", state->regs.ss);
         break;
     case TOK_DS:
-        printf("%-15s0x%-18llx%lld\n", "ds", state->regs.ds, state->regs.ds);
+        print_reg64("ds", state->regs.ds);
         break;
     case TOK_ES:
-        printf("%-15s0x%-18llx%lld\n", "es", state->regs.es, state->regs.es);
+        print_reg64("es", state->regs.es);
         break;
     case TOK_FS:
-        printf("%-15s0x%-18llx%lld\n", "fs", state->regs.fs, state->regs.fs);
+        print_reg64("fs", state->regs.fs);
         break;
     case TOK_GS:
-        printf("%-15s0x%-18llx%lld\n", "gs", state->regs.gs, state->regs.gs);
+        print_reg64("gs", state->regs.gs);
         break;
     default:
         handle_asm_command(pid, state, line);
