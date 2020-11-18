@@ -13,6 +13,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "lexer.h"
 #include "linenoise.h"
 
 extern void run_child(void);
@@ -24,11 +25,6 @@ extern void run_child(void);
 #define COLOR_RESET "\033[m"
 #define COLOR_STACK_DIFF "\033[1;31m"
 #define COLOR_RSP "\033[1;34m"
-
-// Must be a power of two
-#define MAP_CAPACITY 32
-
-typedef char command_name[16];
 
 enum eflags {
     EFLAGS_CF = 0x00000001,
@@ -50,36 +46,6 @@ enum eflags {
     EFLAGS_ID = 0x00200000
 };
 
-enum command_type {
-    COMMAND_UNKNOWN,
-    COMMAND_STACK,
-    COMMAND_REGS,
-    COMMAND_RAX,
-    COMMAND_RBX,
-    COMMAND_RCX,
-    COMMAND_RDX,
-    COMMAND_RSI,
-    COMMAND_RDI,
-    COMMAND_RBP,
-    COMMAND_RSP,
-    COMMAND_R8,
-    COMMAND_R9,
-    COMMAND_R10,
-    COMMAND_R11,
-    COMMAND_R12,
-    COMMAND_R13,
-    COMMAND_R14,
-    COMMAND_R15,
-    COMMAND_RIP,
-    COMMAND_EFLAGS,
-    COMMAND_CS,
-    COMMAND_SS,
-    COMMAND_DS,
-    COMMAND_ES,
-    COMMAND_FS,
-    COMMAND_GS
-};
-
 struct state {
     unsigned char prev_stack[STACK_SIZE];
     unsigned char stack[STACK_SIZE];
@@ -88,13 +54,6 @@ struct state {
     uint64_t rip;
     uint64_t frame_pointer;
 };
-
-struct map {
-    command_name name[MAP_CAPACITY];
-    enum command_type type[MAP_CAPACITY];
-};
-
-static struct map map;
 
 void die(const char *fmt, ...) {
     va_list ap;
@@ -111,23 +70,6 @@ uint64_t to_u64(unsigned char *data) {
            (uint64_t)data[2] << 16 | (uint64_t)data[3] << 24 |
            (uint64_t)data[4] << 32 | (uint64_t)data[5] << 40 |
            (uint64_t)data[6] << 48 | (uint64_t)data[7] << 56;
-}
-
-char *skip_whitespace(char *str) {
-    while (isspace(*str)) {
-        str++;
-    }
-    return str;
-}
-
-char *skip_until(char *str, char c) {
-    while (*str) {
-        if (*str == c) {
-            break;
-        }
-        str++;
-    }
-    return str;
 }
 
 int find_nasm(void) {
@@ -360,74 +302,6 @@ void print_changed_regs(struct user_regs_struct *prev_regs,
     }
 }
 
-uint32_t fnv1a(char *str) {
-    unsigned char *s = (unsigned char *)str;
-    uint32_t hash = 0;
-
-    while (*s) {
-        hash ^= (uint32_t)*s++;
-        hash *= 0x01000193;
-    }
-    return hash;
-}
-
-void add_command(char *name, enum command_type type) {
-    uint32_t i = fnv1a(name);
-
-    for (;;) {
-        i &= MAP_CAPACITY - 1;
-        if (map.name[i][0] == '\0') {
-            strcpy(map.name[i], name);
-            map.type[i] = type;
-            return;
-        }
-        i++;
-    }
-}
-
-enum command_type find_command(char *name) {
-    uint32_t i = fnv1a(name);
-
-    for (;;) {
-        i &= MAP_CAPACITY - 1;
-        if (strcmp(name, map.name[i]) == 0) {
-            return map.type[i];
-        } else if (map.name[i][0] == '\0') {
-            return COMMAND_UNKNOWN;
-        }
-        i++;
-    }
-}
-
-void init_commands(void) {
-    add_command("stack", COMMAND_STACK);
-    add_command("regs", COMMAND_REGS);
-    add_command("rax", COMMAND_RAX);
-    add_command("rbx", COMMAND_RBX);
-    add_command("rcx", COMMAND_RCX);
-    add_command("rdx", COMMAND_RDX);
-    add_command("rsi", COMMAND_RSI);
-    add_command("rdi", COMMAND_RDI);
-    add_command("rbp", COMMAND_RBP);
-    add_command("rsp", COMMAND_RSP);
-    add_command("r8", COMMAND_R8);
-    add_command("r9", COMMAND_R9);
-    add_command("r10", COMMAND_R10);
-    add_command("r11", COMMAND_R11);
-    add_command("r12", COMMAND_R12);
-    add_command("r13", COMMAND_R13);
-    add_command("r14", COMMAND_R14);
-    add_command("r15", COMMAND_R15);
-    add_command("rip", COMMAND_RIP);
-    add_command("eflags", COMMAND_EFLAGS);
-    add_command("cs", COMMAND_CS);
-    add_command("ss", COMMAND_SS);
-    add_command("ds", COMMAND_DS);
-    add_command("es", COMMAND_ES);
-    add_command("fs", COMMAND_FS);
-    add_command("gs", COMMAND_GS);
-}
-
 void read_data(pid_t pid, uint64_t frame_pointer, unsigned char *buf,
                size_t size) {
     struct iovec local[1];
@@ -570,15 +444,31 @@ size_t assemble(char *line, unsigned char *data, size_t size) {
     return read_instruction(outfile, data, size);
 }
 
-void handle_asm_command(pid_t pid, char *line, struct state *state) {
+char *parse_call(void) {
+    next_token();
+    char *start = tok.start;
+    size_t size = (size_t)(tok.end - tok.start);
+    next_token();
+    if (tok.kind != TOK_EOF) {
+        return NULL;
+    }
+    char *ret = malloc(size + 1);
+    memcpy(ret, start, size);
+    ret[size] = '\0';
+    return ret;
+}
+
+void handle_asm_command(pid_t pid, struct state *state, char *line) {
     uint64_t rbx = 0;
     unsigned char data[16];
     size_t size;
 
-    if (strncmp(line, "call ", 5) == 0) {
-        char *symbol = line + 5;
-        symbol = skip_whitespace(symbol);
+    char *symbol = NULL;
+    if (tok.kind == TOK_CALL) {
+        symbol = parse_call();
+    }
 
+    if (symbol) {
         // Clear any existing error
         dlerror();
 
@@ -636,111 +526,105 @@ void handle_asm_command(pid_t pid, char *line, struct state *state) {
     }
 }
 
-void handle_command(pid_t pid, char *line, struct state *state) {
+void handle_command(pid_t pid, struct state *state, char *line) {
     read_data(pid, state->frame_pointer, state->prev_stack,
               sizeof(state->prev_stack));
     read_registers(pid, &state->prev_regs);
 
-    // Trim leading whitespace
-    line = skip_whitespace(line);
-    char *start = line;
-    // Move to end of token
-    line = skip_until(line, ' ');
-    char *end = line;
-    // Trim trailing whitespace
-    line = skip_whitespace(line);
-    enum command_type type = COMMAND_UNKNOWN;
-    // Don't allow trailing tokens
-    if (*line == '\0') {
-        *end = '\0';
-        type = find_command(start);
+    next_token();
+    enum token_kind kind = tok.kind;
+    if (kind != TOK_CALL) {
+        next_token();
+        if (tok.kind != TOK_EOF) {
+            kind = TOK_UNKNOWN;
+        }
     }
 
-    switch (type) {
-    case COMMAND_STACK:
+    switch (kind) {
+    case TOK_STACK:
         print_stack(state->frame_pointer, state->prev_regs.rsp,
                     state->prev_stack, state->stack, sizeof(state->stack));
         break;
-    case COMMAND_REGS:
+    case TOK_REGS:
         print_regs(&state->prev_regs);
         break;
-    case COMMAND_RAX:
+    case TOK_RAX:
         printf("%-15s0x%-18llx%lld\n", "rax", state->regs.rax, state->regs.rax);
         break;
-    case COMMAND_RBX:
+    case TOK_RBX:
         printf("%-15s0x%-18llx%lld\n", "rbx", state->regs.rbx, state->regs.rbx);
         break;
-    case COMMAND_RCX:
+    case TOK_RCX:
         printf("%-15s0x%-18llx%lld\n", "rcx", state->regs.rcx, state->regs.rcx);
         break;
-    case COMMAND_RDX:
+    case TOK_RDX:
         printf("%-15s0x%-18llx%lld\n", "rdx", state->regs.rdx, state->regs.rdx);
         break;
-    case COMMAND_RSI:
+    case TOK_RSI:
         printf("%-15s0x%-18llx%lld\n", "rsi", state->regs.rsi, state->regs.rsi);
         break;
-    case COMMAND_RDI:
+    case TOK_RDI:
         printf("%-15s0x%-18llx%lld\n", "rdi", state->regs.rdi, state->regs.rdi);
         break;
-    case COMMAND_RBP:
+    case TOK_RBP:
         printf("%-15s0x%-18llx0x%llx\n", "rbp", state->regs.rbp,
                state->regs.rbp);
         break;
-    case COMMAND_RSP:
+    case TOK_RSP:
         printf("%-15s0x%-18llx0x%llx\n", "rsp", state->regs.rsp,
                state->regs.rsp);
         break;
-    case COMMAND_R8:
+    case TOK_R8:
         printf("%-15s0x%-18llx%lld\n", "r8", state->regs.r8, state->regs.r8);
         break;
-    case COMMAND_R9:
+    case TOK_R9:
         printf("%-15s0x%-18llx%lld\n", "r9", state->regs.r9, state->regs.r9);
         break;
-    case COMMAND_R10:
+    case TOK_R10:
         printf("%-15s0x%-18llx%lld\n", "r10", state->regs.r10, state->regs.r10);
         break;
-    case COMMAND_R11:
+    case TOK_R11:
         printf("%-15s0x%-18llx%lld\n", "r11", state->regs.r11, state->regs.r11);
         break;
-    case COMMAND_R12:
+    case TOK_R12:
         printf("%-15s0x%-18llx%lld\n", "r12", state->regs.r12, state->regs.r12);
         break;
-    case COMMAND_R13:
+    case TOK_R13:
         printf("%-15s0x%-18llx%lld\n", "r13", state->regs.r13, state->regs.r13);
         break;
-    case COMMAND_R14:
+    case TOK_R14:
         printf("%-15s0x%-18llx%lld\n", "r14", state->regs.r14, state->regs.r14);
         break;
-    case COMMAND_R15:
+    case TOK_R15:
         printf("%-15s0x%-18llx%lld\n", "r15", state->regs.r15, state->regs.r15);
         break;
-    case COMMAND_RIP:
+    case TOK_RIP:
         printf("%-15s0x%-18llx0x%llx\n", "rip", state->regs.rip,
                state->regs.rip);
         break;
-    case COMMAND_EFLAGS:
+    case TOK_EFLAGS:
         print_eflags(state->regs.eflags);
         break;
-    case COMMAND_CS:
+    case TOK_CS:
         printf("%-15s0x%-18llx%lld\n", "cs", state->regs.cs, state->regs.cs);
         break;
-    case COMMAND_SS:
+    case TOK_SS:
         printf("%-15s0x%-18llx%lld\n", "ss", state->regs.ss, state->regs.ss);
         break;
-    case COMMAND_DS:
+    case TOK_DS:
         printf("%-15s0x%-18llx%lld\n", "ds", state->regs.ds, state->regs.ds);
         break;
-    case COMMAND_ES:
+    case TOK_ES:
         printf("%-15s0x%-18llx%lld\n", "es", state->regs.es, state->regs.es);
         break;
-    case COMMAND_FS:
+    case TOK_FS:
         printf("%-15s0x%-18llx%lld\n", "fs", state->regs.fs, state->regs.fs);
         break;
-    case COMMAND_GS:
+    case TOK_GS:
         printf("%-15s0x%-18llx%lld\n", "gs", state->regs.gs, state->regs.gs);
         break;
     default:
-        handle_asm_command(pid, start, state);
+        handle_asm_command(pid, state, line);
         break;
     }
 }
@@ -769,8 +653,9 @@ void run(pid_t pid) {
 
     char *line;
     while ((line = linenoise("> ")) != NULL) {
+        ptr = line;
         linenoiseHistoryAdd(line);
-        handle_command(pid, line, &state);
+        handle_command(pid, &state, line);
         linenoiseFree(line);
     }
 
