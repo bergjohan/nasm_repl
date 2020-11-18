@@ -5,7 +5,7 @@
 #include <string.h>
 
 // Must be a power of two
-#define MAP_CAPACITY 32
+#define MAP_CAPACITY 64
 
 typedef char command_name[16];
 
@@ -79,6 +79,7 @@ void init_commands(void) {
     add_command("stack", TOK_STACK);
     add_command("regs", TOK_REGS);
     add_command("call", TOK_CALL);
+
     add_command("rax", TOK_RAX);
     add_command("rbx", TOK_RBX);
     add_command("rcx", TOK_RCX);
@@ -95,6 +96,24 @@ void init_commands(void) {
     add_command("r13", TOK_R13);
     add_command("r14", TOK_R14);
     add_command("r15", TOK_R15);
+
+    add_command("eax", TOK_EAX);
+    add_command("ebx", TOK_EBX);
+    add_command("ecx", TOK_ECX);
+    add_command("edx", TOK_EDX);
+    add_command("esi", TOK_ESI);
+    add_command("edi", TOK_EDI);
+    add_command("ebp", TOK_EBP);
+    add_command("esp", TOK_ESP);
+    add_command("r8d", TOK_R8D);
+    add_command("r9d", TOK_R9D);
+    add_command("r10d", TOK_R10D);
+    add_command("r11d", TOK_R11D);
+    add_command("r12d", TOK_R12D);
+    add_command("r13d", TOK_R13D);
+    add_command("r14d", TOK_R14D);
+    add_command("r15d", TOK_R15D);
+
     add_command("rip", TOK_RIP);
     add_command("eflags", TOK_EFLAGS);
     add_command("cs", TOK_CS);

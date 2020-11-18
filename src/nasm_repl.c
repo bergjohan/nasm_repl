@@ -210,6 +210,14 @@ void print_reg64_addr(char *name, uint64_t reg) {
     printf("%-15s0x%-18lx0x%lx\n", name, reg, reg);
 }
 
+void print_reg32(char *name, uint32_t reg) {
+    printf("%-15s0x%-18x%d\n", name, reg, reg);
+}
+
+void print_reg32_addr(char *name, uint32_t reg) {
+    printf("%-15s0x%-18x0x%x\n", name, reg, reg);
+}
+
 void print_regs(struct user_regs_struct *regs) {
     print_reg64("rax", regs->rax);
     print_reg64("rbx", regs->rbx);
@@ -561,6 +569,7 @@ void handle_command(pid_t pid, struct state *state, char *line) {
     case TOK_REGS:
         print_regs(&state->prev_regs);
         break;
+
     case TOK_RAX:
         print_reg64("rax", state->regs.rax);
         break;
@@ -609,6 +618,56 @@ void handle_command(pid_t pid, struct state *state, char *line) {
     case TOK_R15:
         print_reg64("r15", state->regs.r15);
         break;
+
+    case TOK_EAX:
+        print_reg32("eax", (uint32_t)state->regs.rax);
+        break;
+    case TOK_EBX:
+        print_reg32("ebx", (uint32_t)state->regs.rbx);
+        break;
+    case TOK_ECX:
+        print_reg32("ecx", (uint32_t)state->regs.rcx);
+        break;
+    case TOK_EDX:
+        print_reg32("edx", (uint32_t)state->regs.rdx);
+        break;
+    case TOK_ESI:
+        print_reg32("esi", (uint32_t)state->regs.rsi);
+        break;
+    case TOK_EDI:
+        print_reg32("edi", (uint32_t)state->regs.rdi);
+        break;
+    case TOK_EBP:
+        print_reg32_addr("ebp", (uint32_t)state->regs.rbp);
+        break;
+    case TOK_ESP:
+        print_reg32_addr("esp", (uint32_t)state->regs.rsp);
+        break;
+    case TOK_R8D:
+        print_reg32("r8d", (uint32_t)state->regs.r8);
+        break;
+    case TOK_R9D:
+        print_reg32("r9d", (uint32_t)state->regs.r9);
+        break;
+    case TOK_R10D:
+        print_reg32("r10d", (uint32_t)state->regs.r10);
+        break;
+    case TOK_R11D:
+        print_reg32("r11d", (uint32_t)state->regs.r11);
+        break;
+    case TOK_R12D:
+        print_reg32("r12d", (uint32_t)state->regs.r12);
+        break;
+    case TOK_R13D:
+        print_reg32("r13d", (uint32_t)state->regs.r13);
+        break;
+    case TOK_R14D:
+        print_reg32("r14d", (uint32_t)state->regs.r14);
+        break;
+    case TOK_R15D:
+        print_reg32("r15d", (uint32_t)state->regs.r15);
+        break;
+
     case TOK_RIP:
         print_reg64_addr("rip", state->regs.rip);
         break;
