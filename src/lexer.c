@@ -49,7 +49,8 @@ enum token_kind find_command(char *name, size_t size) {
 
     for (;;) {
         i &= MAP_CAPACITY - 1;
-        if (strncmp(name, map.name[i], size) == 0) {
+        if (strlen(map.name[i]) == size &&
+            strncmp(name, map.name[i], size) == 0) {
             return map.kind[i];
         } else if (strlen(map.name[i]) == 0) {
             return TOK_UNKNOWN;

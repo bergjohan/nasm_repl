@@ -368,7 +368,6 @@ int write_all(int fd, const void *buf) {
         }
         offset += (size_t)ret;
     }
-
     return 0;
 }
 
@@ -446,12 +445,18 @@ size_t assemble(char *line, unsigned char *data, size_t size) {
 
 char *parse_call(void) {
     next_token();
+    if (tok.kind == TOK_EOF) {
+        return NULL;
+    }
+
     char *start = tok.start;
     size_t size = (size_t)(tok.end - tok.start);
+
     next_token();
     if (tok.kind != TOK_EOF) {
         return NULL;
     }
+
     char *ret = malloc(size + 1);
     memcpy(ret, start, size);
     ret[size] = '\0';
