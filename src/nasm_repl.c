@@ -219,6 +219,14 @@ void print_reg32_addr(char *name, uint32_t reg) {
     printf("%-15s0x%-18x0x%x\n", name, reg, reg);
 }
 
+void print_reg16(char *name, uint16_t reg) {
+    printf("%-15s0x%-18x%hd\n", name, reg, reg);
+}
+
+void print_reg16_addr(char *name, uint16_t reg) {
+    printf("%-15s0x%-18x0x%x\n", name, reg, reg);
+}
+
 void print_regs(struct user_regs_struct *regs) {
     print_reg64("rax", regs->rax);
     print_reg64("rbx", regs->rbx);
@@ -676,6 +684,55 @@ void handle_command(pid_t pid, struct state *state, char *line) {
         break;
     case TOK_R15D:
         print_reg32("r15d", (uint32_t)state->regs.r15);
+        break;
+
+    case TOK_AX:
+        print_reg16("ax", (uint16_t)state->regs.rax);
+        break;
+    case TOK_BX:
+        print_reg16("bx", (uint16_t)state->regs.rbx);
+        break;
+    case TOK_CX:
+        print_reg16("cx", (uint16_t)state->regs.rcx);
+        break;
+    case TOK_DX:
+        print_reg16("dx", (uint16_t)state->regs.rdx);
+        break;
+    case TOK_SI:
+        print_reg16("si", (uint16_t)state->regs.rsi);
+        break;
+    case TOK_DI:
+        print_reg16("di", (uint16_t)state->regs.rdi);
+        break;
+    case TOK_BP:
+        print_reg16_addr("bp", (uint16_t)state->regs.rbp);
+        break;
+    case TOK_SP:
+        print_reg16_addr("sp", (uint16_t)state->regs.rsp);
+        break;
+    case TOK_R8W:
+        print_reg16("r8w", (uint16_t)state->regs.r8);
+        break;
+    case TOK_R9W:
+        print_reg16("r9w", (uint16_t)state->regs.r9);
+        break;
+    case TOK_R10W:
+        print_reg16("r10w", (uint16_t)state->regs.r10);
+        break;
+    case TOK_R11W:
+        print_reg16("r11w", (uint16_t)state->regs.r11);
+        break;
+    case TOK_R12W:
+        print_reg16("r12w", (uint16_t)state->regs.r12);
+        break;
+    case TOK_R13W:
+        print_reg16("r13w", (uint16_t)state->regs.r13);
+        break;
+    case TOK_R14W:
+        print_reg16("r14w", (uint16_t)state->regs.r14);
+        break;
+    case TOK_R15W:
+        print_reg16("r15w", (uint16_t)state->regs.r15);
         break;
 
     case TOK_RIP:

@@ -112,6 +112,23 @@ void init_commands(void) {
     add_command("r14d", TOK_R14D);
     add_command("r15d", TOK_R15D);
 
+    add_command("ax", TOK_AX);
+    add_command("bx", TOK_BX);
+    add_command("cx", TOK_CX);
+    add_command("dx", TOK_DX);
+    add_command("si", TOK_SI);
+    add_command("di", TOK_DI);
+    add_command("bp", TOK_BP);
+    add_command("sp", TOK_SP);
+    add_command("r8w", TOK_R8W);
+    add_command("r9w", TOK_R9W);
+    add_command("r10w", TOK_R10W);
+    add_command("r11w", TOK_R11W);
+    add_command("r12w", TOK_R12W);
+    add_command("r13w", TOK_R13W);
+    add_command("r14w", TOK_R14W);
+    add_command("r15w", TOK_R15W);
+
     add_command("rip", TOK_RIP);
     add_command("eflags", TOK_EFLAGS);
     add_command("cs", TOK_CS);
