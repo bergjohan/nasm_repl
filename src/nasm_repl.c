@@ -227,6 +227,14 @@ void print_reg16_addr(char *name, uint16_t reg) {
     printf("%-15s0x%-18x0x%x\n", name, reg, reg);
 }
 
+void print_reg8(char *name, uint8_t reg) {
+    printf("%-15s0x%-18x%hhd\n", name, reg, reg);
+}
+
+void print_reg8_addr(char *name, uint8_t reg) {
+    printf("%-15s0x%-18x0x%x\n", name, reg, reg);
+}
+
 void print_regs(struct user_regs_struct *regs) {
     print_reg64("rax", regs->rax);
     print_reg64("rbx", regs->rbx);
@@ -733,6 +741,67 @@ void handle_command(pid_t pid, struct state *state, char *line) {
         break;
     case TOK_R15W:
         print_reg16("r15w", (uint16_t)state->regs.r15);
+        break;
+
+    case TOK_AL:
+        print_reg8("al", (uint8_t)state->regs.rax);
+        break;
+    case TOK_BL:
+        print_reg8("bl", (uint8_t)state->regs.rbx);
+        break;
+    case TOK_CL:
+        print_reg8("cl", (uint8_t)state->regs.rcx);
+        break;
+    case TOK_DL:
+        print_reg8("dl", (uint8_t)state->regs.rdx);
+        break;
+    case TOK_AH:
+        print_reg8("ah", (uint8_t)(state->regs.rax >> 8));
+        break;
+    case TOK_BH:
+        print_reg8("bh", (uint8_t)(state->regs.rbx >> 8));
+        break;
+    case TOK_CH:
+        print_reg8("ch", (uint8_t)(state->regs.rcx >> 8));
+        break;
+    case TOK_DH:
+        print_reg8("dh", (uint8_t)(state->regs.rdx >> 8));
+        break;
+    case TOK_SIL:
+        print_reg8("sil", (uint8_t)state->regs.rsi);
+        break;
+    case TOK_DIL:
+        print_reg8("dil", (uint8_t)state->regs.rdi);
+        break;
+    case TOK_BPL:
+        print_reg8_addr("bpl", (uint8_t)state->regs.rbp);
+        break;
+    case TOK_SPL:
+        print_reg8_addr("spl", (uint8_t)state->regs.rsp);
+        break;
+    case TOK_R8B:
+        print_reg8("r8b", (uint8_t)state->regs.r8);
+        break;
+    case TOK_R9B:
+        print_reg8("r9b", (uint8_t)state->regs.r9);
+        break;
+    case TOK_R10B:
+        print_reg8("r10b", (uint8_t)state->regs.r10);
+        break;
+    case TOK_R11B:
+        print_reg8("r11b", (uint8_t)state->regs.r11);
+        break;
+    case TOK_R12B:
+        print_reg8("r12b", (uint8_t)state->regs.r12);
+        break;
+    case TOK_R13B:
+        print_reg8("r13b", (uint8_t)state->regs.r13);
+        break;
+    case TOK_R14B:
+        print_reg8("r14b", (uint8_t)state->regs.r14);
+        break;
+    case TOK_R15B:
+        print_reg8("r15b", (uint8_t)state->regs.r15);
         break;
 
     case TOK_RIP:

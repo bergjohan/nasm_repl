@@ -5,7 +5,7 @@
 #include <string.h>
 
 // Must be a power of two
-#define MAP_CAPACITY 64
+#define MAP_CAPACITY 128
 
 typedef char command_name[16];
 
@@ -128,6 +128,27 @@ void init_commands(void) {
     add_command("r13w", TOK_R13W);
     add_command("r14w", TOK_R14W);
     add_command("r15w", TOK_R15W);
+
+    add_command("al", TOK_AL);
+    add_command("bl", TOK_BL);
+    add_command("cl", TOK_CL);
+    add_command("dl", TOK_DL);
+    add_command("ah", TOK_AH);
+    add_command("bh", TOK_BH);
+    add_command("ch", TOK_CH);
+    add_command("dh", TOK_DH);
+    add_command("sil", TOK_SIL);
+    add_command("dil", TOK_DIL);
+    add_command("bpl", TOK_BPL);
+    add_command("spl", TOK_SPL);
+    add_command("r8b", TOK_R8B);
+    add_command("r9b", TOK_R9B);
+    add_command("r10b", TOK_R10B);
+    add_command("r11b", TOK_R11B);
+    add_command("r12b", TOK_R12B);
+    add_command("r13b", TOK_R13B);
+    add_command("r14b", TOK_R14B);
+    add_command("r15b", TOK_R15B);
 
     add_command("rip", TOK_RIP);
     add_command("eflags", TOK_EFLAGS);
