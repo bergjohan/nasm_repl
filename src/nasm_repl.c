@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include <ctype.h>
 #include <dlfcn.h>
+#include <elf.h>
 #include <inttypes.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -340,13 +341,15 @@ void write_data(pid_t pid, uint64_t address, uint64_t data) {
 }
 
 void read_registers(pid_t pid, struct user_regs_struct *regs) {
-    if (ptrace(PTRACE_GETREGS, pid, NULL, regs) == -1) {
+    struct iovec iov = {.iov_base = regs, .iov_len = sizeof(*regs)};
+    if (ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &iov) == -1) {
         die("ptrace() failed\n");
     }
 }
 
 void write_registers(pid_t pid, struct user_regs_struct *regs) {
-    if (ptrace(PTRACE_SETREGS, pid, NULL, regs) == -1) {
+    struct iovec iov = {.iov_base = regs, .iov_len = sizeof(*regs)};
+    if (ptrace(PTRACE_SETREGSET, pid, NT_PRSTATUS, &iov) == -1) {
         die("ptrace() failed\n");
     }
 }
