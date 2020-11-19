@@ -15,9 +15,7 @@ struct map {
 };
 
 static struct map map;
-
-char *ptr;
-struct token tok;
+static char *buffer;
 
 uint32_t fnv1a(char *str, size_t size) {
     unsigned char *s = (unsigned char *)str;
@@ -59,19 +57,19 @@ enum token_kind find_command(char *name, size_t size) {
     }
 }
 
-void next_token(void) {
-    while (isspace(*ptr)) {
-        ptr++;
+void next_token(struct token *tok) {
+    while (isspace(*buffer)) {
+        buffer++;
     }
-    if (*ptr == '\0') {
-        tok.kind = TOK_EOF;
+    if (*buffer == '\0') {
+        tok->kind = TOK_EOF;
     } else {
-        tok.start = ptr;
-        while (*ptr && *ptr != ' ') {
-            ptr++;
+        tok->start = buffer;
+        while (*buffer && *buffer != ' ') {
+            buffer++;
         }
-        tok.size = (size_t)(ptr - tok.start);
-        tok.kind = find_command(tok.start, tok.size);
+        tok->size = (size_t)(buffer - tok->start);
+        tok->kind = find_command(tok->start, tok->size);
     }
 }
 
@@ -122,4 +120,8 @@ void init_commands(void) {
     add_command("es", TOK_ES);
     add_command("fs", TOK_FS);
     add_command("gs", TOK_GS);
+}
+
+void init_lexer(char *line) {
+    buffer = line;
 }

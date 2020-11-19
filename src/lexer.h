@@ -59,8 +59,6 @@ struct token {
     enum token_kind kind;
 };
 
-extern char *ptr;
-extern struct token tok;
-
-void next_token(void);
+void next_token(struct token *tok);
 void init_commands(void);
+void init_lexer(char *line);

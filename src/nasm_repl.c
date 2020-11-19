@@ -460,7 +460,8 @@ size_t assemble(char *line, unsigned char *data, size_t size) {
 }
 
 char *parse_call(void) {
-    next_token();
+    struct token tok;
+    next_token(&tok);
     if (tok.kind == TOK_EOF) {
         return NULL;
     }
@@ -468,7 +469,7 @@ char *parse_call(void) {
     char *start = tok.start;
     size_t size = tok.size;
 
-    next_token();
+    next_token(&tok);
     // No trailing tokens
     if (tok.kind != TOK_EOF) {
         return NULL;
@@ -480,13 +481,14 @@ char *parse_call(void) {
     return ret;
 }
 
-void handle_asm_command(pid_t pid, struct state *state, char *line) {
+void handle_asm_command(pid_t pid, struct state *state, char *line,
+                        enum token_kind kind) {
     uint64_t rbx = 0;
     unsigned char data[16];
     size_t size;
 
     char *symbol = NULL;
-    if (tok.kind == TOK_CALL) {
+    if (kind == TOK_CALL) {
         symbol = parse_call();
     }
 
@@ -555,11 +557,12 @@ void handle_command(pid_t pid, struct state *state, char *line) {
               sizeof(state->prev_stack));
     read_registers(pid, &state->prev_regs);
 
-    next_token();
+    struct token tok;
+    next_token(&tok);
     enum token_kind kind = tok.kind;
     // No trailing tokens except for call
     if (kind != TOK_CALL) {
-        next_token();
+        next_token(&tok);
         if (tok.kind != TOK_EOF) {
             kind = TOK_UNKNOWN;
         }
@@ -697,7 +700,7 @@ void handle_command(pid_t pid, struct state *state, char *line) {
         print_reg64("gs", state->regs.gs);
         break;
     default:
-        handle_asm_command(pid, state, line);
+        handle_asm_command(pid, state, line, kind);
         break;
     }
 }
@@ -726,8 +729,7 @@ void run(pid_t pid) {
 
     char *line;
     while ((line = linenoise("> ")) != NULL) {
-        // Init lexer
-        ptr = line;
+        init_lexer(line);
         linenoiseHistoryAdd(line);
         handle_command(pid, &state, line);
         linenoiseFree(line);
