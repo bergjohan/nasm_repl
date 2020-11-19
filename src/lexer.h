@@ -92,11 +92,11 @@ enum token_kind {
 };
 
 struct token {
-    char *start;
+    const char *start;
     size_t size;
     enum token_kind kind;
 };
 
 void next_token(struct token *tok);
 void init_commands(void);
-void init_lexer(char *line);
+void init_lexer(const char *line);

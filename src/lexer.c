@@ -15,10 +15,10 @@ struct map {
 };
 
 static struct map map;
-static char *buffer;
+static const char *buffer;
 
-uint32_t fnv1a(char *str, size_t size) {
-    unsigned char *s = (unsigned char *)str;
+uint32_t fnv1a(const char *str, size_t size) {
+    const unsigned char *s = (const unsigned char *)str;
     uint32_t hash = 0x811c9dc5;
 
     for (size_t i = 0; i < size; i++) {
@@ -28,7 +28,7 @@ uint32_t fnv1a(char *str, size_t size) {
     return hash;
 }
 
-void add_command(char *name, enum token_kind kind) {
+void add_command(const char *name, enum token_kind kind) {
     uint32_t i = fnv1a(name, strlen(name));
 
     for (;;) {
@@ -42,7 +42,7 @@ void add_command(char *name, enum token_kind kind) {
     }
 }
 
-enum token_kind find_command(char *name, size_t size) {
+enum token_kind find_command(const char *name, size_t size) {
     uint32_t i = fnv1a(name, size);
 
     for (;;) {
@@ -160,6 +160,4 @@ void init_commands(void) {
     add_command("gs", TOK_GS);
 }
 
-void init_lexer(char *line) {
-    buffer = line;
-}
+void init_lexer(const char *line) { buffer = line; }

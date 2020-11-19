@@ -66,7 +66,7 @@ void die(const char *fmt, ...) {
     exit(1);
 }
 
-uint64_t to_u64(unsigned char *data) {
+uint64_t to_u64(const unsigned char *data) {
     return (uint64_t)data[0] | (uint64_t)data[1] << 8 |
            (uint64_t)data[2] << 16 | (uint64_t)data[3] << 24 |
            (uint64_t)data[4] << 32 | (uint64_t)data[5] << 40 |
@@ -108,7 +108,8 @@ int find_nasm(void) {
 }
 
 void print_stack(uint64_t frame_pointer, uint64_t rsp,
-                 unsigned char *prev_stack, unsigned char *stack, size_t size) {
+                 const unsigned char *prev_stack, const unsigned char *stack,
+                 size_t size) {
     uint64_t address = frame_pointer - size;
     unsigned char ascii[17] = {0};
 
@@ -203,39 +204,39 @@ void print_eflags(uint64_t eflags) {
     printf("]\n");
 }
 
-void print_reg64(char *name, uint64_t reg) {
+void print_reg64(const char *name, uint64_t reg) {
     printf("%-15s0x%-18lx%ld\n", name, reg, reg);
 }
 
-void print_reg64_addr(char *name, uint64_t reg) {
+void print_reg64_addr(const char *name, uint64_t reg) {
     printf("%-15s0x%-18lx0x%lx\n", name, reg, reg);
 }
 
-void print_reg32(char *name, uint32_t reg) {
+void print_reg32(const char *name, uint32_t reg) {
     printf("%-15s0x%-18x%d\n", name, reg, reg);
 }
 
-void print_reg32_addr(char *name, uint32_t reg) {
+void print_reg32_addr(const char *name, uint32_t reg) {
     printf("%-15s0x%-18x0x%x\n", name, reg, reg);
 }
 
-void print_reg16(char *name, uint16_t reg) {
+void print_reg16(const char *name, uint16_t reg) {
     printf("%-15s0x%-18x%hd\n", name, reg, reg);
 }
 
-void print_reg16_addr(char *name, uint16_t reg) {
+void print_reg16_addr(const char *name, uint16_t reg) {
     printf("%-15s0x%-18x0x%x\n", name, reg, reg);
 }
 
-void print_reg8(char *name, uint8_t reg) {
+void print_reg8(const char *name, uint8_t reg) {
     printf("%-15s0x%-18x%hhd\n", name, reg, reg);
 }
 
-void print_reg8_addr(char *name, uint8_t reg) {
+void print_reg8_addr(const char *name, uint8_t reg) {
     printf("%-15s0x%-18x0x%x\n", name, reg, reg);
 }
 
-void print_regs(struct user_regs_struct *regs) {
+void print_regs(const struct user_regs_struct *regs) {
     print_reg64("rax", regs->rax);
     print_reg64("rbx", regs->rbx);
     print_reg64("rcx", regs->rcx);
@@ -262,8 +263,8 @@ void print_regs(struct user_regs_struct *regs) {
     print_reg64("gs", regs->gs);
 }
 
-void print_changed_regs(struct user_regs_struct *prev_regs,
-                        struct user_regs_struct *regs) {
+void print_changed_regs(const struct user_regs_struct *prev_regs,
+                        const struct user_regs_struct *regs) {
     if (prev_regs->rax != regs->rax) {
         print_reg64("rax", regs->rax);
     }
@@ -406,7 +407,7 @@ int write_all(int fd, const void *buf) {
     return 0;
 }
 
-int write_assembly(int fd, char *line) {
+int write_assembly(int fd, const char *line) {
     char *buf;
     if (asprintf(&buf, "BITS 64\n%s\n", line) == -1) {
         close(fd);
@@ -424,7 +425,7 @@ int write_assembly(int fd, char *line) {
     return 0;
 }
 
-int run_nasm(char *infile, char *outfile) {
+int run_nasm(const char *infile, const char *outfile) {
     char command[64];
     sprintf(command, "nasm -f bin -o %s %s", outfile, infile);
     if (system(command) != 0) {
@@ -436,7 +437,7 @@ int run_nasm(char *infile, char *outfile) {
     return 0;
 }
 
-size_t read_instruction(char *outfile, unsigned char *data, size_t size) {
+size_t read_instruction(const char *outfile, unsigned char *data, size_t size) {
     FILE *fp = fopen(outfile, "r");
     if (!fp) {
         fclose(fp);
@@ -456,7 +457,7 @@ size_t read_instruction(char *outfile, unsigned char *data, size_t size) {
     return ret;
 }
 
-size_t assemble(char *line, unsigned char *data, size_t size) {
+size_t assemble(const char *line, unsigned char *data, size_t size) {
     char infile[] = "nasmXXXXXX";
     int fd = mkstemp(infile);
     if (fd == -1) {
@@ -485,7 +486,7 @@ char *parse_call(void) {
         return NULL;
     }
 
-    char *start = tok.start;
+    const char *start = tok.start;
     size_t size = tok.size;
 
     next_token(&tok);
@@ -500,7 +501,7 @@ char *parse_call(void) {
     return ret;
 }
 
-void handle_asm_command(pid_t pid, struct state *state, char *line,
+void handle_asm_command(pid_t pid, struct state *state, const char *line,
                         enum token_kind kind) {
     uint64_t rbx = 0;
     unsigned char data[16];
@@ -571,7 +572,7 @@ void handle_asm_command(pid_t pid, struct state *state, char *line,
     }
 }
 
-void handle_command(pid_t pid, struct state *state, char *line) {
+void handle_command(pid_t pid, struct state *state, const char *line) {
     read_data(pid, state->frame_pointer, state->prev_stack,
               sizeof(state->prev_stack));
     read_registers(pid, &state->prev_regs);
