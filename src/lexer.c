@@ -10,8 +10,8 @@
 typedef char command_name[16];
 
 struct map {
-    command_name name[MAP_CAPACITY];
-    enum token_kind kind[MAP_CAPACITY];
+    command_name names[MAP_CAPACITY];
+    enum token_kind kinds[MAP_CAPACITY];
 };
 
 static struct map map;
@@ -33,9 +33,9 @@ void add_command(const char *name, enum token_kind kind) {
 
     for (;;) {
         i &= MAP_CAPACITY - 1;
-        if (strlen(map.name[i]) == 0) {
-            strcpy(map.name[i], name);
-            map.kind[i] = kind;
+        if (strlen(map.names[i]) == 0) {
+            strcpy(map.names[i], name);
+            map.kinds[i] = kind;
             return;
         }
         i++;
@@ -47,10 +47,10 @@ enum token_kind find_command(const char *name, size_t size) {
 
     for (;;) {
         i &= MAP_CAPACITY - 1;
-        if (strlen(map.name[i]) == size &&
-            strncmp(name, map.name[i], size) == 0) {
-            return map.kind[i];
-        } else if (strlen(map.name[i]) == 0) {
+        if (strlen(map.names[i]) == size &&
+            strncmp(name, map.names[i], size) == 0) {
+            return map.kinds[i];
+        } else if (strlen(map.names[i]) == 0) {
             return TOK_UNKNOWN;
         }
         i++;
