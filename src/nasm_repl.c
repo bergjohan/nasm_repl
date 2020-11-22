@@ -27,7 +27,7 @@ extern void run_child(void);
 #define COLOR_STACK_DIFF "\033[1;31m"
 #define COLOR_RSP "\033[1;34m"
 
-enum eflags {
+typedef enum Eflags {
     EFLAGS_CF = 0x00000001,
     EFLAGS_PF = 0x00000004,
     EFLAGS_AF = 0x00000010,
@@ -45,16 +45,18 @@ enum eflags {
     EFLAGS_VIF = 0x00080000,
     EFLAGS_VIP = 0x00100000,
     EFLAGS_ID = 0x00200000
-};
+} Eflags;
 
-struct state {
+typedef struct user_regs_struct user_regs_struct;
+
+typedef struct State {
     unsigned char prev_stack[STACK_SIZE];
     unsigned char stack[STACK_SIZE];
-    struct user_regs_struct prev_regs;
-    struct user_regs_struct regs;
+    user_regs_struct prev_regs;
+    user_regs_struct regs;
     uint64_t rip;
     uint64_t frame_pointer;
-};
+} State;
 
 void die(const char *fmt, ...) {
     va_list ap;
@@ -67,10 +69,9 @@ void die(const char *fmt, ...) {
 }
 
 uint64_t to_u64(const unsigned char *data) {
-    return (uint64_t)data[0] | (uint64_t)data[1] << 8 |
-           (uint64_t)data[2] << 16 | (uint64_t)data[3] << 24 |
-           (uint64_t)data[4] << 32 | (uint64_t)data[5] << 40 |
-           (uint64_t)data[6] << 48 | (uint64_t)data[7] << 56;
+    uint64_t ret;
+    memcpy(&ret, data, sizeof(ret));
+    return ret;
 }
 
 int find_nasm(void) {
@@ -236,7 +237,7 @@ void print_reg8_addr(const char *name, uint8_t reg) {
     printf("%-15s0x%-18x0x%x\n", name, reg, reg);
 }
 
-void print_regs(const struct user_regs_struct *regs) {
+void print_regs(const user_regs_struct *regs) {
     print_reg64("rax", regs->rax);
     print_reg64("rbx", regs->rbx);
     print_reg64("rcx", regs->rcx);
@@ -263,8 +264,8 @@ void print_regs(const struct user_regs_struct *regs) {
     print_reg64("gs", regs->gs);
 }
 
-void print_changed_regs(const struct user_regs_struct *prev_regs,
-                        const struct user_regs_struct *regs) {
+void print_changed_regs(const user_regs_struct *prev_regs,
+                        const user_regs_struct *regs) {
     if (prev_regs->rax != regs->rax) {
         print_reg64("rax", regs->rax);
     }
@@ -357,14 +358,14 @@ void write_data(pid_t pid, uint64_t address, uint64_t data) {
     }
 }
 
-void read_registers(pid_t pid, struct user_regs_struct *regs) {
+void read_registers(pid_t pid, user_regs_struct *regs) {
     struct iovec iov = {.iov_base = regs, .iov_len = sizeof(*regs)};
     if (ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &iov) == -1) {
         die("ptrace() failed\n");
     }
 }
 
-void write_registers(pid_t pid, struct user_regs_struct *regs) {
+void write_registers(pid_t pid, user_regs_struct *regs) {
     struct iovec iov = {.iov_base = regs, .iov_len = sizeof(*regs)};
     if (ptrace(PTRACE_SETREGSET, pid, NT_PRSTATUS, &iov) == -1) {
         die("ptrace() failed\n");
@@ -480,7 +481,7 @@ size_t assemble(const char *line, unsigned char *data, size_t size) {
 }
 
 char *parse_call(void) {
-    struct token tok;
+    Token tok;
     next_token(&tok);
     if (tok.kind == TOK_EOF) {
         return NULL;
@@ -501,8 +502,8 @@ char *parse_call(void) {
     return ret;
 }
 
-void handle_asm_command(pid_t pid, struct state *state, const char *line,
-                        enum token_kind kind) {
+void handle_asm_command(pid_t pid, State *state, const char *line,
+                        Token_kind kind) {
     uint64_t rbx = 0;
     unsigned char data[16];
     size_t size;
@@ -572,14 +573,14 @@ void handle_asm_command(pid_t pid, struct state *state, const char *line,
     }
 }
 
-void handle_command(pid_t pid, struct state *state, const char *line) {
+void handle_command(pid_t pid, State *state, const char *line) {
     read_data(pid, state->frame_pointer, state->prev_stack,
               sizeof(state->prev_stack));
     read_registers(pid, &state->prev_regs);
 
-    struct token tok;
+    Token tok;
     next_token(&tok);
-    enum token_kind kind = tok.kind;
+    Token_kind kind = tok.kind;
     // No trailing tokens except for call
     if (kind != TOK_CALL) {
         next_token(&tok);
@@ -596,246 +597,70 @@ void handle_command(pid_t pid, struct state *state, const char *line) {
     case TOK_REGS:
         print_regs(&state->prev_regs);
         break;
-
-    case TOK_RAX:
-        print_reg64("rax", state->regs.rax);
-        break;
-    case TOK_RBX:
-        print_reg64("rbx", state->regs.rbx);
-        break;
-    case TOK_RCX:
-        print_reg64("rcx", state->regs.rcx);
-        break;
-    case TOK_RDX:
-        print_reg64("rdx", state->regs.rdx);
-        break;
-    case TOK_RSI:
-        print_reg64("rsi", state->regs.rsi);
-        break;
-    case TOK_RDI:
-        print_reg64("rdi", state->regs.rdi);
-        break;
-    case TOK_RBP:
-        print_reg64_addr("rbp", state->regs.rbp);
-        break;
-    case TOK_RSP:
-        print_reg64_addr("rsp", state->regs.rsp);
-        break;
-    case TOK_R8:
-        print_reg64("r8", state->regs.r8);
-        break;
-    case TOK_R9:
-        print_reg64("r9", state->regs.r9);
-        break;
-    case TOK_R10:
-        print_reg64("r10", state->regs.r10);
-        break;
-    case TOK_R11:
-        print_reg64("r11", state->regs.r11);
-        break;
-    case TOK_R12:
-        print_reg64("r12", state->regs.r12);
-        break;
-    case TOK_R13:
-        print_reg64("r13", state->regs.r13);
-        break;
-    case TOK_R14:
-        print_reg64("r14", state->regs.r14);
-        break;
-    case TOK_R15:
-        print_reg64("r15", state->regs.r15);
-        break;
-
-    case TOK_EAX:
-        print_reg32("eax", (uint32_t)state->regs.rax);
-        break;
-    case TOK_EBX:
-        print_reg32("ebx", (uint32_t)state->regs.rbx);
-        break;
-    case TOK_ECX:
-        print_reg32("ecx", (uint32_t)state->regs.rcx);
-        break;
-    case TOK_EDX:
-        print_reg32("edx", (uint32_t)state->regs.rdx);
-        break;
-    case TOK_ESI:
-        print_reg32("esi", (uint32_t)state->regs.rsi);
-        break;
-    case TOK_EDI:
-        print_reg32("edi", (uint32_t)state->regs.rdi);
-        break;
-    case TOK_EBP:
-        print_reg32_addr("ebp", (uint32_t)state->regs.rbp);
-        break;
-    case TOK_ESP:
-        print_reg32_addr("esp", (uint32_t)state->regs.rsp);
-        break;
-    case TOK_R8D:
-        print_reg32("r8d", (uint32_t)state->regs.r8);
-        break;
-    case TOK_R9D:
-        print_reg32("r9d", (uint32_t)state->regs.r9);
-        break;
-    case TOK_R10D:
-        print_reg32("r10d", (uint32_t)state->regs.r10);
-        break;
-    case TOK_R11D:
-        print_reg32("r11d", (uint32_t)state->regs.r11);
-        break;
-    case TOK_R12D:
-        print_reg32("r12d", (uint32_t)state->regs.r12);
-        break;
-    case TOK_R13D:
-        print_reg32("r13d", (uint32_t)state->regs.r13);
-        break;
-    case TOK_R14D:
-        print_reg32("r14d", (uint32_t)state->regs.r14);
-        break;
-    case TOK_R15D:
-        print_reg32("r15d", (uint32_t)state->regs.r15);
-        break;
-
-    case TOK_AX:
-        print_reg16("ax", (uint16_t)state->regs.rax);
-        break;
-    case TOK_BX:
-        print_reg16("bx", (uint16_t)state->regs.rbx);
-        break;
-    case TOK_CX:
-        print_reg16("cx", (uint16_t)state->regs.rcx);
-        break;
-    case TOK_DX:
-        print_reg16("dx", (uint16_t)state->regs.rdx);
-        break;
-    case TOK_SI:
-        print_reg16("si", (uint16_t)state->regs.rsi);
-        break;
-    case TOK_DI:
-        print_reg16("di", (uint16_t)state->regs.rdi);
-        break;
-    case TOK_BP:
-        print_reg16_addr("bp", (uint16_t)state->regs.rbp);
-        break;
-    case TOK_SP:
-        print_reg16_addr("sp", (uint16_t)state->regs.rsp);
-        break;
-    case TOK_R8W:
-        print_reg16("r8w", (uint16_t)state->regs.r8);
-        break;
-    case TOK_R9W:
-        print_reg16("r9w", (uint16_t)state->regs.r9);
-        break;
-    case TOK_R10W:
-        print_reg16("r10w", (uint16_t)state->regs.r10);
-        break;
-    case TOK_R11W:
-        print_reg16("r11w", (uint16_t)state->regs.r11);
-        break;
-    case TOK_R12W:
-        print_reg16("r12w", (uint16_t)state->regs.r12);
-        break;
-    case TOK_R13W:
-        print_reg16("r13w", (uint16_t)state->regs.r13);
-        break;
-    case TOK_R14W:
-        print_reg16("r14w", (uint16_t)state->regs.r14);
-        break;
-    case TOK_R15W:
-        print_reg16("r15w", (uint16_t)state->regs.r15);
-        break;
-
-    case TOK_AL:
-        print_reg8("al", (uint8_t)state->regs.rax);
-        break;
-    case TOK_BL:
-        print_reg8("bl", (uint8_t)state->regs.rbx);
-        break;
-    case TOK_CL:
-        print_reg8("cl", (uint8_t)state->regs.rcx);
-        break;
-    case TOK_DL:
-        print_reg8("dl", (uint8_t)state->regs.rdx);
-        break;
-    case TOK_AH:
-        print_reg8("ah", (uint8_t)(state->regs.rax >> 8));
-        break;
-    case TOK_BH:
-        print_reg8("bh", (uint8_t)(state->regs.rbx >> 8));
-        break;
-    case TOK_CH:
-        print_reg8("ch", (uint8_t)(state->regs.rcx >> 8));
-        break;
-    case TOK_DH:
-        print_reg8("dh", (uint8_t)(state->regs.rdx >> 8));
-        break;
-    case TOK_SIL:
-        print_reg8("sil", (uint8_t)state->regs.rsi);
-        break;
-    case TOK_DIL:
-        print_reg8("dil", (uint8_t)state->regs.rdi);
-        break;
-    case TOK_BPL:
-        print_reg8_addr("bpl", (uint8_t)state->regs.rbp);
-        break;
-    case TOK_SPL:
-        print_reg8_addr("spl", (uint8_t)state->regs.rsp);
-        break;
-    case TOK_R8B:
-        print_reg8("r8b", (uint8_t)state->regs.r8);
-        break;
-    case TOK_R9B:
-        print_reg8("r9b", (uint8_t)state->regs.r9);
-        break;
-    case TOK_R10B:
-        print_reg8("r10b", (uint8_t)state->regs.r10);
-        break;
-    case TOK_R11B:
-        print_reg8("r11b", (uint8_t)state->regs.r11);
-        break;
-    case TOK_R12B:
-        print_reg8("r12b", (uint8_t)state->regs.r12);
-        break;
-    case TOK_R13B:
-        print_reg8("r13b", (uint8_t)state->regs.r13);
-        break;
-    case TOK_R14B:
-        print_reg8("r14b", (uint8_t)state->regs.r14);
-        break;
-    case TOK_R15B:
-        print_reg8("r15b", (uint8_t)state->regs.r15);
-        break;
-
-    case TOK_RIP:
-        print_reg64_addr("rip", state->regs.rip);
-        break;
-    case TOK_EFLAGS:
-        print_eflags(state->regs.eflags);
-        break;
-    case TOK_CS:
-        print_reg64("cs", state->regs.cs);
-        break;
-    case TOK_SS:
-        print_reg64("ss", state->regs.ss);
-        break;
-    case TOK_DS:
-        print_reg64("ds", state->regs.ds);
-        break;
-    case TOK_ES:
-        print_reg64("es", state->regs.es);
-        break;
-    case TOK_FS:
-        print_reg64("fs", state->regs.fs);
-        break;
-    case TOK_GS:
-        print_reg64("gs", state->regs.gs);
-        break;
+    case TOK_REG64: {
+        uint64_t reg = *(uint64_t *)((char *)&state->regs + tok.offset);
+        printf("%-15.*s0x%-18lx%ld\n", (int)tok.size, tok.start, reg, reg);
+        break;
+    }
+    case TOK_REG32: {
+        uint64_t reg = *(uint64_t *)((char *)&state->regs + tok.offset);
+        printf("%-15.*s0x%-18x%d\n", (int)tok.size, tok.start, (uint32_t)reg,
+               (uint32_t)reg);
+        break;
+    }
+    case TOK_REG16: {
+        uint64_t reg = *(uint64_t *)((char *)&state->regs + tok.offset);
+        printf("%-15.*s0x%-18x%hd\n", (int)tok.size, tok.start, (uint16_t)reg,
+               (uint16_t)reg);
+        break;
+    }
+    case TOK_REG8: {
+        uint64_t reg = *(uint64_t *)((char *)&state->regs + tok.offset);
+        printf("%-15.*s0x%-18x%hhd\n", (int)tok.size, tok.start, (uint8_t)reg,
+               (uint8_t)reg);
+        break;
+    }
+    case TOK_REG8_HIGH: {
+        uint64_t reg = *(uint64_t *)((char *)&state->regs + tok.offset);
+        printf("%-15.*s0x%-18x%hhd\n", (int)tok.size, tok.start,
+               (uint8_t)(reg >> 8), (uint8_t)(reg >> 8));
+        break;
+    }
+    case TOK_REG64_ADDR: {
+        uint64_t reg = *(uint64_t *)((char *)&state->regs + tok.offset);
+        printf("%-15.*s0x%-18lx0x%lx\n", (int)tok.size, tok.start, reg, reg);
+        break;
+    }
+    case TOK_REG32_ADDR: {
+        uint64_t reg = *(uint64_t *)((char *)&state->regs + tok.offset);
+        printf("%-15.*s0x%-18x0x%x\n", (int)tok.size, tok.start, (uint32_t)reg,
+               (uint32_t)reg);
+        break;
+    }
+    case TOK_REG16_ADDR: {
+        uint64_t reg = *(uint64_t *)((char *)&state->regs + tok.offset);
+        printf("%-15.*s0x%-18x0x%x\n", (int)tok.size, tok.start, (uint16_t)reg,
+               (uint16_t)reg);
+        break;
+    }
+    case TOK_REG8_ADDR: {
+        uint64_t reg = *(uint64_t *)((char *)&state->regs + tok.offset);
+        printf("%-15.*s0x%-18x0x%x\n", (int)tok.size, tok.start, (uint8_t)reg,
+               (uint8_t)reg);
+        break;
+    }
+    case TOK_EFLAGS: {
+        uint64_t reg = *(uint64_t *)((char *)&state->regs + tok.offset);
+        print_eflags(reg);
+        break;
+    }
     default:
         handle_asm_command(pid, state, line, kind);
         break;
     }
 }
 
-void init_state(pid_t pid, struct state *state) {
+void init_state(pid_t pid, State *state) {
     // Since we'll be using memcmp
     memset(&state->prev_regs, 0, sizeof(state->prev_regs));
     memset(&state->regs, 0, sizeof(state->regs));
@@ -852,7 +677,7 @@ void run(pid_t pid) {
         die("waitpid() failed\n");
     }
 
-    struct state state;
+    State state;
     init_state(pid, &state);
 
     init_commands();
