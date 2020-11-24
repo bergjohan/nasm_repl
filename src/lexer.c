@@ -84,7 +84,6 @@ void next_token(Token *tok) {
 
 void init_lexer(void) {
     map_insert("stack", (Value){TOK_STACK, 0});
-    map_insert("regs", (Value){TOK_REGS, 0});
     map_insert("call", (Value){TOK_CALL, 0});
 
     map_insert("rax", (Value){TOK_REG64, offsetof(user_regs_struct, rax)});
@@ -93,8 +92,8 @@ void init_lexer(void) {
     map_insert("rdx", (Value){TOK_REG64, offsetof(user_regs_struct, rdx)});
     map_insert("rsi", (Value){TOK_REG64, offsetof(user_regs_struct, rsi)});
     map_insert("rdi", (Value){TOK_REG64, offsetof(user_regs_struct, rdi)});
-    map_insert("rbp", (Value){TOK_REG64_ADDR, offsetof(user_regs_struct, rbp)});
-    map_insert("rsp", (Value){TOK_REG64_ADDR, offsetof(user_regs_struct, rsp)});
+    map_insert("rbp", (Value){TOK_REG64, offsetof(user_regs_struct, rbp)});
+    map_insert("rsp", (Value){TOK_REG64, offsetof(user_regs_struct, rsp)});
     map_insert("r8", (Value){TOK_REG64, offsetof(user_regs_struct, r8)});
     map_insert("r9", (Value){TOK_REG64, offsetof(user_regs_struct, r9)});
     map_insert("r10", (Value){TOK_REG64, offsetof(user_regs_struct, r10)});
@@ -110,8 +109,8 @@ void init_lexer(void) {
     map_insert("edx", (Value){TOK_REG32, offsetof(user_regs_struct, rdx)});
     map_insert("esi", (Value){TOK_REG32, offsetof(user_regs_struct, rsi)});
     map_insert("edi", (Value){TOK_REG32, offsetof(user_regs_struct, rdi)});
-    map_insert("ebp", (Value){TOK_REG32_ADDR, offsetof(user_regs_struct, rbp)});
-    map_insert("esp", (Value){TOK_REG32_ADDR, offsetof(user_regs_struct, rsp)});
+    map_insert("ebp", (Value){TOK_REG32, offsetof(user_regs_struct, rbp)});
+    map_insert("esp", (Value){TOK_REG32, offsetof(user_regs_struct, rsp)});
     map_insert("r8d", (Value){TOK_REG32, offsetof(user_regs_struct, r8)});
     map_insert("r9d", (Value){TOK_REG32, offsetof(user_regs_struct, r9)});
     map_insert("r10d", (Value){TOK_REG32, offsetof(user_regs_struct, r10)});
@@ -127,8 +126,8 @@ void init_lexer(void) {
     map_insert("dx", (Value){TOK_REG16, offsetof(user_regs_struct, rdx)});
     map_insert("si", (Value){TOK_REG16, offsetof(user_regs_struct, rsi)});
     map_insert("di", (Value){TOK_REG16, offsetof(user_regs_struct, rdi)});
-    map_insert("bp", (Value){TOK_REG16_ADDR, offsetof(user_regs_struct, rbp)});
-    map_insert("sp", (Value){TOK_REG16_ADDR, offsetof(user_regs_struct, rsp)});
+    map_insert("bp", (Value){TOK_REG16, offsetof(user_regs_struct, rbp)});
+    map_insert("sp", (Value){TOK_REG16, offsetof(user_regs_struct, rsp)});
     map_insert("r8d", (Value){TOK_REG16, offsetof(user_regs_struct, r8)});
     map_insert("r9d", (Value){TOK_REG16, offsetof(user_regs_struct, r9)});
     map_insert("r10d", (Value){TOK_REG16, offsetof(user_regs_struct, r10)});
@@ -144,8 +143,8 @@ void init_lexer(void) {
     map_insert("dl", (Value){TOK_REG8, offsetof(user_regs_struct, rdx)});
     map_insert("sil", (Value){TOK_REG8, offsetof(user_regs_struct, rsi)});
     map_insert("dil", (Value){TOK_REG8, offsetof(user_regs_struct, rdi)});
-    map_insert("bpl", (Value){TOK_REG8_ADDR, offsetof(user_regs_struct, rbp)});
-    map_insert("spl", (Value){TOK_REG8_ADDR, offsetof(user_regs_struct, rsp)});
+    map_insert("bpl", (Value){TOK_REG8, offsetof(user_regs_struct, rbp)});
+    map_insert("spl", (Value){TOK_REG8, offsetof(user_regs_struct, rsp)});
     map_insert("r8b", (Value){TOK_REG8, offsetof(user_regs_struct, r8)});
     map_insert("r9b", (Value){TOK_REG8, offsetof(user_regs_struct, r9)});
     map_insert("r10b", (Value){TOK_REG8, offsetof(user_regs_struct, r10)});
@@ -160,7 +159,7 @@ void init_lexer(void) {
     map_insert("ch", (Value){TOK_REG8_HIGH, offsetof(user_regs_struct, rcx)});
     map_insert("dh", (Value){TOK_REG8_HIGH, offsetof(user_regs_struct, rdx)});
 
-    map_insert("rip", (Value){TOK_REG64_ADDR, offsetof(user_regs_struct, rip)});
+    map_insert("rip", (Value){TOK_REG64, offsetof(user_regs_struct, rip)});
     map_insert("eflags",
                (Value){TOK_EFLAGS, offsetof(user_regs_struct, eflags)});
     map_insert("cs", (Value){TOK_REG64, offsetof(user_regs_struct, cs)});
@@ -169,6 +168,23 @@ void init_lexer(void) {
     map_insert("es", (Value){TOK_REG64, offsetof(user_regs_struct, es)});
     map_insert("fs", (Value){TOK_REG64, offsetof(user_regs_struct, fs)});
     map_insert("gs", (Value){TOK_REG64, offsetof(user_regs_struct, gs)});
+
+    map_insert("xmm0", (Value){TOK_XMM, 0});
+    map_insert("xmm1", (Value){TOK_XMM, 4});
+    map_insert("xmm2", (Value){TOK_XMM, 8});
+    map_insert("xmm3", (Value){TOK_XMM, 12});
+    map_insert("xmm4", (Value){TOK_XMM, 16});
+    map_insert("xmm5", (Value){TOK_XMM, 20});
+    map_insert("xmm6", (Value){TOK_XMM, 24});
+    map_insert("xmm7", (Value){TOK_XMM, 28});
+    map_insert("xmm8", (Value){TOK_XMM, 32});
+    map_insert("xmm9", (Value){TOK_XMM, 36});
+    map_insert("xmm10", (Value){TOK_XMM, 40});
+    map_insert("xmm11", (Value){TOK_XMM, 44});
+    map_insert("xmm12", (Value){TOK_XMM, 48});
+    map_insert("xmm13", (Value){TOK_XMM, 52});
+    map_insert("xmm14", (Value){TOK_XMM, 56});
+    map_insert("xmm15", (Value){TOK_XMM, 60});
 }
 
 void scan_buffer(const char *line) { buffer = line; }

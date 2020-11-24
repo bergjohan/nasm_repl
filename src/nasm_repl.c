@@ -2,8 +2,10 @@
 #include <ctype.h>
 #include <dlfcn.h>
 #include <elf.h>
+#include <float.h>
 #include <inttypes.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,6 +30,7 @@ extern void run_child(void);
 #define COLOR_RSP "\033[1;34m"
 
 typedef struct user_regs_struct user_regs_struct;
+typedef struct user_fpregs_struct user_fpregs_struct;
 
 typedef enum Eflags {
     EFLAGS_CF = 0x00000001,
@@ -54,6 +57,8 @@ typedef struct State {
     unsigned char stack[STACK_SIZE];
     user_regs_struct prev_regs;
     user_regs_struct regs;
+    user_fpregs_struct prev_fpregs;
+    user_fpregs_struct fpregs;
     uint64_t rip;
     uint64_t frame_pointer;
 } State;
@@ -149,8 +154,11 @@ void print_stack(uint64_t frame_pointer, uint64_t rsp,
     }
 }
 
-void print_eflags(uint64_t eflags) {
-    printf("%-15s0x%-18lx%s", "eflags", eflags, "[ ");
+void print_eflags(uint64_t eflags, bool print_name) {
+    if (print_name) {
+        printf("eflags = ");
+    }
+    printf("[ ");
     if (eflags & EFLAGS_CF) {
         printf("CF ");
     }
@@ -206,38 +214,59 @@ void print_eflags(uint64_t eflags) {
 }
 
 void print_reg(const char *name, uint64_t reg) {
-    printf("%-15s0x%-18lx%ld\n", name, reg, reg);
+    printf("%s = 0x%lx  %ld\n", name, reg, reg);
 }
 
-void print_reg_addr(const char *name, uint64_t reg) {
-    printf("%-15s0x%-18lx0x%lx\n", name, reg, reg);
-}
+void print_xmm_reg(const char *name, int size, const unsigned int *xmm_space) {
+    const unsigned char *buf = (const unsigned char *)xmm_space;
 
-void print_regs(const user_regs_struct *regs) {
-    print_reg("rax", regs->rax);
-    print_reg("rbx", regs->rbx);
-    print_reg("rcx", regs->rcx);
-    print_reg("rdx", regs->rdx);
-    print_reg("rsi", regs->rsi);
-    print_reg("rdi", regs->rdi);
-    print_reg_addr("rbp", regs->rbp);
-    print_reg_addr("rsp", regs->rsp);
-    print_reg("r8", regs->r8);
-    print_reg("r9", regs->r9);
-    print_reg("r10", regs->r10);
-    print_reg("r11", regs->r11);
-    print_reg("r12", regs->r12);
-    print_reg("r13", regs->r13);
-    print_reg("r14", regs->r14);
-    print_reg("r15", regs->r15);
-    print_reg_addr("rip", regs->rip);
-    print_eflags(regs->eflags);
-    print_reg("cs", regs->cs);
-    print_reg("ss", regs->ss);
-    print_reg("ds", regs->ds);
-    print_reg("es", regs->es);
-    print_reg("fs", regs->fs);
-    print_reg("gs", regs->gs);
+    printf("%.*s = {\n", size, name);
+    printf("  v4_float = {");
+    for (size_t i = 0; i < 4; i++) {
+        float f;
+        memcpy(&f, &buf[i * sizeof(f)], sizeof(f));
+        printf(i ? ", %.*g" : "%.*g", FLT_DECIMAL_DIG, f);
+    }
+    puts("},");
+    printf("  v2_double = {");
+    for (size_t i = 0; i < 2; i++) {
+        double d;
+        memcpy(&d, &buf[i * sizeof(d)], sizeof(d));
+        printf(i ? ", %.*g" : "%.*g", DBL_DECIMAL_DIG, d);
+    }
+    puts("},");
+    printf("  v16_int8 = {");
+    for (size_t i = 0; i < 16; i++) {
+        int8_t j;
+        memcpy(&j, &buf[i * sizeof(j)], sizeof(j));
+        printf(i ? ", %hhd" : "%hhd", j);
+    }
+    puts("},");
+    printf("  v8_int16 = {");
+    for (size_t i = 0; i < 8; i++) {
+        int16_t j;
+        memcpy(&j, &buf[i * sizeof(j)], sizeof(j));
+        printf(i ? ", %hd" : "%hd", j);
+    }
+    puts("},");
+    printf("  v4_int32 = {");
+    for (size_t i = 0; i < 4; i++) {
+        int32_t j;
+        memcpy(&j, &buf[i * sizeof(j)], sizeof(j));
+        printf(i ? ", %d" : "%d", j);
+    }
+    puts("},");
+    printf("  v2_int64 = {");
+    for (size_t i = 0; i < 2; i++) {
+        int64_t j;
+        memcpy(&j, &buf[i * sizeof(j)], sizeof(j));
+        printf(i ? ", %ld" : "%ld", j);
+    }
+    puts("},");
+    __uint128_t i;
+    memcpy(&i, buf, sizeof(i));
+    printf("  uint128 = 0x%lx%lx\n", (uint64_t)(i >> 64), (uint64_t)i);
+    puts("}");
 }
 
 void print_changed_regs(const user_regs_struct *prev_regs,
@@ -261,10 +290,10 @@ void print_changed_regs(const user_regs_struct *prev_regs,
         print_reg("rdi", regs->rdi);
     }
     if (prev_regs->rbp != regs->rbp) {
-        print_reg_addr("rbp", regs->rbp);
+        print_reg("rbp", regs->rbp);
     }
     if (prev_regs->rsp != regs->rsp) {
-        print_reg_addr("rsp", regs->rsp);
+        print_reg("rsp", regs->rsp);
     }
     if (prev_regs->r8 != regs->r8) {
         print_reg("r8", regs->r8);
@@ -291,7 +320,7 @@ void print_changed_regs(const user_regs_struct *prev_regs,
         print_reg("r15", regs->r15);
     }
     if (prev_regs->eflags != regs->eflags) {
-        print_eflags(regs->eflags);
+        print_eflags(regs->eflags, true);
     }
     if (prev_regs->cs != regs->cs) {
         print_reg("cs", regs->cs);
@@ -310,6 +339,58 @@ void print_changed_regs(const user_regs_struct *prev_regs,
     }
     if (prev_regs->gs != regs->gs) {
         print_reg("gs", regs->gs);
+    }
+}
+
+void print_changed_fpregs(const user_fpregs_struct *prev_fpregs,
+                          const user_fpregs_struct *fpregs) {
+    if (memcmp(&prev_fpregs->xmm_space[0], &fpregs->xmm_space[0], 16) != 0) {
+        print_xmm_reg("xmm0", 4, &fpregs->xmm_space[0]);
+    }
+    if (memcmp(&prev_fpregs->xmm_space[4], &fpregs->xmm_space[4], 16) != 0) {
+        print_xmm_reg("xmm1", 4, &fpregs->xmm_space[4]);
+    }
+    if (memcmp(&prev_fpregs->xmm_space[8], &fpregs->xmm_space[8], 16) != 0) {
+        print_xmm_reg("xmm2", 4, &fpregs->xmm_space[8]);
+    }
+    if (memcmp(&prev_fpregs->xmm_space[12], &fpregs->xmm_space[12], 16) != 0) {
+        print_xmm_reg("xmm3", 4, &fpregs->xmm_space[12]);
+    }
+    if (memcmp(&prev_fpregs->xmm_space[16], &fpregs->xmm_space[16], 16) != 0) {
+        print_xmm_reg("xmm4", 4, &fpregs->xmm_space[16]);
+    }
+    if (memcmp(&prev_fpregs->xmm_space[20], &fpregs->xmm_space[20], 16) != 0) {
+        print_xmm_reg("xmm5", 4, &fpregs->xmm_space[20]);
+    }
+    if (memcmp(&prev_fpregs->xmm_space[24], &fpregs->xmm_space[24], 16) != 0) {
+        print_xmm_reg("xmm6", 4, &fpregs->xmm_space[24]);
+    }
+    if (memcmp(&prev_fpregs->xmm_space[28], &fpregs->xmm_space[28], 16) != 0) {
+        print_xmm_reg("xmm7", 4, &fpregs->xmm_space[28]);
+    }
+    if (memcmp(&prev_fpregs->xmm_space[32], &fpregs->xmm_space[32], 16) != 0) {
+        print_xmm_reg("xmm8", 4, &fpregs->xmm_space[32]);
+    }
+    if (memcmp(&prev_fpregs->xmm_space[36], &fpregs->xmm_space[36], 16) != 0) {
+        print_xmm_reg("xmm9", 4, &fpregs->xmm_space[36]);
+    }
+    if (memcmp(&prev_fpregs->xmm_space[40], &fpregs->xmm_space[40], 16) != 0) {
+        print_xmm_reg("xmm10", 5, &fpregs->xmm_space[40]);
+    }
+    if (memcmp(&prev_fpregs->xmm_space[44], &fpregs->xmm_space[44], 16) != 0) {
+        print_xmm_reg("xmm11", 5, &fpregs->xmm_space[44]);
+    }
+    if (memcmp(&prev_fpregs->xmm_space[48], &fpregs->xmm_space[48], 16) != 0) {
+        print_xmm_reg("xmm12", 5, &fpregs->xmm_space[48]);
+    }
+    if (memcmp(&prev_fpregs->xmm_space[52], &fpregs->xmm_space[52], 16) != 0) {
+        print_xmm_reg("xmm13", 5, &fpregs->xmm_space[52]);
+    }
+    if (memcmp(&prev_fpregs->xmm_space[56], &fpregs->xmm_space[56], 16) != 0) {
+        print_xmm_reg("xmm14", 5, &fpregs->xmm_space[56]);
+    }
+    if (memcmp(&prev_fpregs->xmm_space[60], &fpregs->xmm_space[60], 16) != 0) {
+        print_xmm_reg("xmm15", 5, &fpregs->xmm_space[60]);
     }
 }
 
@@ -334,16 +415,30 @@ void write_data(pid_t pid, uint64_t address, uint64_t data) {
     }
 }
 
-void read_registers(pid_t pid, user_regs_struct *regs) {
+void read_regs(pid_t pid, user_regs_struct *regs) {
     struct iovec iov = {.iov_base = regs, .iov_len = sizeof(*regs)};
     if (ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &iov) == -1) {
         die("ptrace() failed\n");
     }
 }
 
-void write_registers(pid_t pid, user_regs_struct *regs) {
+void write_regs(pid_t pid, user_regs_struct *regs) {
     struct iovec iov = {.iov_base = regs, .iov_len = sizeof(*regs)};
     if (ptrace(PTRACE_SETREGSET, pid, NT_PRSTATUS, &iov) == -1) {
+        die("ptrace() failed\n");
+    }
+}
+
+void read_fpregs(pid_t pid, user_fpregs_struct *fpregs) {
+    struct iovec iov = {.iov_base = fpregs, .iov_len = sizeof(*fpregs)};
+    if (ptrace(PTRACE_GETREGSET, pid, NT_FPREGSET, &iov) == -1) {
+        die("ptrace() failed\n");
+    }
+}
+
+void write_fpregs(pid_t pid, user_fpregs_struct *fpregs) {
+    struct iovec iov = {.iov_base = fpregs, .iov_len = sizeof(*fpregs)};
+    if (ptrace(PTRACE_SETREGSET, pid, NT_FPREGSET, &iov) == -1) {
         die("ptrace() failed\n");
     }
 }
@@ -507,7 +602,7 @@ void handle_asm_command(pid_t pid, State *state, const char *line,
 
         // Load rbx with address of symbol
         state->prev_regs.rbx = address;
-        write_registers(pid, &state->prev_regs);
+        write_regs(pid, &state->prev_regs);
 
         size = assemble("call rbx", data, sizeof(data));
         if (size == 0) {
@@ -530,13 +625,14 @@ void handle_asm_command(pid_t pid, State *state, const char *line,
     execute_instruction(pid);
 
     read_data(pid, state->frame_pointer, state->stack, sizeof(state->stack));
-    read_registers(pid, &state->regs);
+    read_regs(pid, &state->regs);
+    read_fpregs(pid, &state->fpregs);
 
     // Restore rbx
     if (rbx != 0 && state->prev_regs.rbx == state->regs.rbx) {
         state->prev_regs.rbx = rbx;
         state->regs.rbx = rbx;
-        write_registers(pid, &state->regs);
+        write_regs(pid, &state->regs);
     }
 
     if (memcmp(state->prev_stack, state->stack, sizeof(state->stack)) != 0) {
@@ -547,12 +643,18 @@ void handle_asm_command(pid_t pid, State *state, const char *line,
     if (memcmp(&state->prev_regs, &state->regs, sizeof(state->regs)) != 0) {
         print_changed_regs(&state->prev_regs, &state->regs);
     }
+
+    if (memcmp(state->prev_fpregs.xmm_space, state->fpregs.xmm_space,
+               sizeof(state->fpregs.xmm_space)) != 0) {
+        print_changed_fpregs(&state->prev_fpregs, &state->fpregs);
+    }
 }
 
 void handle_command(pid_t pid, State *state, const char *line) {
     read_data(pid, state->frame_pointer, state->prev_stack,
               sizeof(state->prev_stack));
-    read_registers(pid, &state->prev_regs);
+    read_regs(pid, &state->prev_regs);
+    read_fpregs(pid, &state->prev_fpregs);
 
     Token tok;
     next_token(&tok);
@@ -570,66 +672,40 @@ void handle_command(pid_t pid, State *state, const char *line) {
         print_stack(state->frame_pointer, state->prev_regs.rsp,
                     state->prev_stack, state->stack, sizeof(state->stack));
         break;
-    case TOK_REGS:
-        print_regs(&state->prev_regs);
-        break;
     case TOK_REG64: {
         uint64_t reg = *(uint64_t *)((char *)&state->regs + tok.offset);
-        printf("%-15.*s0x%-18lx%ld\n", (int)tok.size, tok.start, reg, reg);
+        printf("0x%lx  %ld\n", reg, reg);
         break;
     }
     case TOK_REG32: {
         uint64_t reg = *(uint64_t *)((char *)&state->regs + tok.offset);
-        printf("%-15.*s0x%-18x%d\n", (int)tok.size, tok.start, (uint32_t)reg,
-               (uint32_t)reg);
+        printf("0x%x  %d\n", (uint32_t)reg, (uint32_t)reg);
         break;
     }
     case TOK_REG16: {
         uint64_t reg = *(uint64_t *)((char *)&state->regs + tok.offset);
-        printf("%-15.*s0x%-18x%hd\n", (int)tok.size, tok.start, (uint16_t)reg,
-               (uint16_t)reg);
+        printf("0x%x  %hd\n", (uint16_t)reg, (uint16_t)reg);
         break;
     }
     case TOK_REG8: {
         uint64_t reg = *(uint64_t *)((char *)&state->regs + tok.offset);
-        printf("%-15.*s0x%-18x%hhd\n", (int)tok.size, tok.start, (uint8_t)reg,
-               (uint8_t)reg);
+        printf("0x%x  %hhd\n", (uint8_t)reg, (uint8_t)reg);
         break;
     }
     case TOK_REG8_HIGH: {
         uint64_t reg = *(uint64_t *)((char *)&state->regs + tok.offset);
-        printf("%-15.*s0x%-18x%hhd\n", (int)tok.size, tok.start,
-               (uint8_t)(reg >> 8), (uint8_t)(reg >> 8));
-        break;
-    }
-    case TOK_REG64_ADDR: {
-        uint64_t reg = *(uint64_t *)((char *)&state->regs + tok.offset);
-        printf("%-15.*s0x%-18lx0x%lx\n", (int)tok.size, tok.start, reg, reg);
-        break;
-    }
-    case TOK_REG32_ADDR: {
-        uint64_t reg = *(uint64_t *)((char *)&state->regs + tok.offset);
-        printf("%-15.*s0x%-18x0x%x\n", (int)tok.size, tok.start, (uint32_t)reg,
-               (uint32_t)reg);
-        break;
-    }
-    case TOK_REG16_ADDR: {
-        uint64_t reg = *(uint64_t *)((char *)&state->regs + tok.offset);
-        printf("%-15.*s0x%-18x0x%x\n", (int)tok.size, tok.start, (uint16_t)reg,
-               (uint16_t)reg);
-        break;
-    }
-    case TOK_REG8_ADDR: {
-        uint64_t reg = *(uint64_t *)((char *)&state->regs + tok.offset);
-        printf("%-15.*s0x%-18x0x%x\n", (int)tok.size, tok.start, (uint8_t)reg,
-               (uint8_t)reg);
+        printf("0x%x  %hhd\n", (uint8_t)(reg >> 8), (uint8_t)(reg >> 8));
         break;
     }
     case TOK_EFLAGS: {
         uint64_t reg = *(uint64_t *)((char *)&state->regs + tok.offset);
-        print_eflags(reg);
+        print_eflags(reg, false);
         break;
     }
+    case TOK_XMM:
+        print_xmm_reg(tok.start, (int)tok.size,
+                      state->fpregs.xmm_space + tok.offset);
+        break;
     default:
         handle_asm_command(pid, state, line, kind);
         break;
@@ -640,8 +716,10 @@ void init_state(pid_t pid, State *state) {
     // Since we'll be using memcmp
     memset(&state->prev_regs, 0, sizeof(state->prev_regs));
     memset(&state->regs, 0, sizeof(state->regs));
+    memset(&state->prev_fpregs, 0, sizeof(state->prev_fpregs));
+    memset(&state->fpregs, 0, sizeof(state->fpregs));
 
-    read_registers(pid, &state->regs);
+    read_regs(pid, &state->regs);
     state->rip = state->regs.rip;
     state->frame_pointer = state->regs.rsp;
 
@@ -670,7 +748,7 @@ void run(pid_t pid) {
     state.regs.rip += 16 + 2;
     // Restore stack pointer
     state.regs.rsp = state.frame_pointer;
-    write_registers(pid, &state.regs);
+    write_regs(pid, &state.regs);
     cont(pid);
 }
 

@@ -6,18 +6,14 @@ typedef enum Token_kind {
     TOK_UNKNOWN,
     TOK_EOF,
     TOK_STACK,
-    TOK_REGS,
     TOK_CALL,
     TOK_REG64,
     TOK_REG32,
     TOK_REG16,
     TOK_REG8,
     TOK_REG8_HIGH,
-    TOK_REG64_ADDR,
-    TOK_REG32_ADDR,
-    TOK_REG16_ADDR,
-    TOK_REG8_ADDR,
-    TOK_EFLAGS
+    TOK_EFLAGS,
+    TOK_XMM
 } Token_kind;
 
 typedef struct Token {
