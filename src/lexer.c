@@ -24,7 +24,7 @@ typedef struct Map {
 static Map map;
 static const char *buffer;
 
-uint32_t fnv1a(const char *str, size_t size) {
+uint32_t hash(const char *str, size_t size) {
     const unsigned char *s = (const unsigned char *)str;
     uint32_t hash = 0x811c9dc5;
 
@@ -35,8 +35,8 @@ uint32_t fnv1a(const char *str, size_t size) {
     return hash;
 }
 
-void add_command(const char *name, Value value) {
-    uint32_t i = fnv1a(name, strlen(name));
+void map_insert(const char *name, Value value) {
+    uint32_t i = hash(name, strlen(name));
 
     for (;;) {
         i &= MAP_CAPACITY - 1;
@@ -49,8 +49,8 @@ void add_command(const char *name, Value value) {
     }
 }
 
-Value find_command(const char *name, size_t size) {
-    uint32_t i = fnv1a(name, size);
+Value map_find(const char *name, size_t size) {
+    uint32_t i = hash(name, size);
 
     for (;;) {
         i &= MAP_CAPACITY - 1;
@@ -76,104 +76,99 @@ void next_token(Token *tok) {
             buffer++;
         }
         tok->size = (size_t)(buffer - tok->start);
-        Value value = find_command(tok->start, tok->size);
+        Value value = map_find(tok->start, tok->size);
         tok->kind = value.kind;
         tok->offset = value.offset;
     }
 }
 
-void init_commands(void) {
-    add_command("stack", (Value){TOK_STACK, 0});
-    add_command("regs", (Value){TOK_REGS, 0});
-    add_command("call", (Value){TOK_CALL, 0});
+void init_lexer(void) {
+    map_insert("stack", (Value){TOK_STACK, 0});
+    map_insert("regs", (Value){TOK_REGS, 0});
+    map_insert("call", (Value){TOK_CALL, 0});
 
-    add_command("rax", (Value){TOK_REG64, offsetof(user_regs_struct, rax)});
-    add_command("rbx", (Value){TOK_REG64, offsetof(user_regs_struct, rbx)});
-    add_command("rcx", (Value){TOK_REG64, offsetof(user_regs_struct, rcx)});
-    add_command("rdx", (Value){TOK_REG64, offsetof(user_regs_struct, rdx)});
-    add_command("rsi", (Value){TOK_REG64, offsetof(user_regs_struct, rsi)});
-    add_command("rdi", (Value){TOK_REG64, offsetof(user_regs_struct, rdi)});
-    add_command("rbp",
-                (Value){TOK_REG64_ADDR, offsetof(user_regs_struct, rbp)});
-    add_command("rsp",
-                (Value){TOK_REG64_ADDR, offsetof(user_regs_struct, rsp)});
-    add_command("r8", (Value){TOK_REG64, offsetof(user_regs_struct, r8)});
-    add_command("r9", (Value){TOK_REG64, offsetof(user_regs_struct, r9)});
-    add_command("r10", (Value){TOK_REG64, offsetof(user_regs_struct, r10)});
-    add_command("r11", (Value){TOK_REG64, offsetof(user_regs_struct, r11)});
-    add_command("r12", (Value){TOK_REG64, offsetof(user_regs_struct, r12)});
-    add_command("r13", (Value){TOK_REG64, offsetof(user_regs_struct, r13)});
-    add_command("r14", (Value){TOK_REG64, offsetof(user_regs_struct, r14)});
-    add_command("r15", (Value){TOK_REG64, offsetof(user_regs_struct, r15)});
+    map_insert("rax", (Value){TOK_REG64, offsetof(user_regs_struct, rax)});
+    map_insert("rbx", (Value){TOK_REG64, offsetof(user_regs_struct, rbx)});
+    map_insert("rcx", (Value){TOK_REG64, offsetof(user_regs_struct, rcx)});
+    map_insert("rdx", (Value){TOK_REG64, offsetof(user_regs_struct, rdx)});
+    map_insert("rsi", (Value){TOK_REG64, offsetof(user_regs_struct, rsi)});
+    map_insert("rdi", (Value){TOK_REG64, offsetof(user_regs_struct, rdi)});
+    map_insert("rbp", (Value){TOK_REG64_ADDR, offsetof(user_regs_struct, rbp)});
+    map_insert("rsp", (Value){TOK_REG64_ADDR, offsetof(user_regs_struct, rsp)});
+    map_insert("r8", (Value){TOK_REG64, offsetof(user_regs_struct, r8)});
+    map_insert("r9", (Value){TOK_REG64, offsetof(user_regs_struct, r9)});
+    map_insert("r10", (Value){TOK_REG64, offsetof(user_regs_struct, r10)});
+    map_insert("r11", (Value){TOK_REG64, offsetof(user_regs_struct, r11)});
+    map_insert("r12", (Value){TOK_REG64, offsetof(user_regs_struct, r12)});
+    map_insert("r13", (Value){TOK_REG64, offsetof(user_regs_struct, r13)});
+    map_insert("r14", (Value){TOK_REG64, offsetof(user_regs_struct, r14)});
+    map_insert("r15", (Value){TOK_REG64, offsetof(user_regs_struct, r15)});
 
-    add_command("eax", (Value){TOK_REG32, offsetof(user_regs_struct, rax)});
-    add_command("ebx", (Value){TOK_REG32, offsetof(user_regs_struct, rbx)});
-    add_command("ecx", (Value){TOK_REG32, offsetof(user_regs_struct, rcx)});
-    add_command("edx", (Value){TOK_REG32, offsetof(user_regs_struct, rdx)});
-    add_command("esi", (Value){TOK_REG32, offsetof(user_regs_struct, rsi)});
-    add_command("edi", (Value){TOK_REG32, offsetof(user_regs_struct, rdi)});
-    add_command("ebp",
-                (Value){TOK_REG32_ADDR, offsetof(user_regs_struct, rbp)});
-    add_command("esp",
-                (Value){TOK_REG32_ADDR, offsetof(user_regs_struct, rsp)});
-    add_command("r8d", (Value){TOK_REG32, offsetof(user_regs_struct, r8)});
-    add_command("r9d", (Value){TOK_REG32, offsetof(user_regs_struct, r9)});
-    add_command("r10d", (Value){TOK_REG32, offsetof(user_regs_struct, r10)});
-    add_command("r11d", (Value){TOK_REG32, offsetof(user_regs_struct, r11)});
-    add_command("r12d", (Value){TOK_REG32, offsetof(user_regs_struct, r12)});
-    add_command("r13d", (Value){TOK_REG32, offsetof(user_regs_struct, r13)});
-    add_command("r14d", (Value){TOK_REG32, offsetof(user_regs_struct, r14)});
-    add_command("r15d", (Value){TOK_REG32, offsetof(user_regs_struct, r15)});
+    map_insert("eax", (Value){TOK_REG32, offsetof(user_regs_struct, rax)});
+    map_insert("ebx", (Value){TOK_REG32, offsetof(user_regs_struct, rbx)});
+    map_insert("ecx", (Value){TOK_REG32, offsetof(user_regs_struct, rcx)});
+    map_insert("edx", (Value){TOK_REG32, offsetof(user_regs_struct, rdx)});
+    map_insert("esi", (Value){TOK_REG32, offsetof(user_regs_struct, rsi)});
+    map_insert("edi", (Value){TOK_REG32, offsetof(user_regs_struct, rdi)});
+    map_insert("ebp", (Value){TOK_REG32_ADDR, offsetof(user_regs_struct, rbp)});
+    map_insert("esp", (Value){TOK_REG32_ADDR, offsetof(user_regs_struct, rsp)});
+    map_insert("r8d", (Value){TOK_REG32, offsetof(user_regs_struct, r8)});
+    map_insert("r9d", (Value){TOK_REG32, offsetof(user_regs_struct, r9)});
+    map_insert("r10d", (Value){TOK_REG32, offsetof(user_regs_struct, r10)});
+    map_insert("r11d", (Value){TOK_REG32, offsetof(user_regs_struct, r11)});
+    map_insert("r12d", (Value){TOK_REG32, offsetof(user_regs_struct, r12)});
+    map_insert("r13d", (Value){TOK_REG32, offsetof(user_regs_struct, r13)});
+    map_insert("r14d", (Value){TOK_REG32, offsetof(user_regs_struct, r14)});
+    map_insert("r15d", (Value){TOK_REG32, offsetof(user_regs_struct, r15)});
 
-    add_command("ax", (Value){TOK_REG16, offsetof(user_regs_struct, rax)});
-    add_command("bx", (Value){TOK_REG16, offsetof(user_regs_struct, rbx)});
-    add_command("cx", (Value){TOK_REG16, offsetof(user_regs_struct, rcx)});
-    add_command("dx", (Value){TOK_REG16, offsetof(user_regs_struct, rdx)});
-    add_command("si", (Value){TOK_REG16, offsetof(user_regs_struct, rsi)});
-    add_command("di", (Value){TOK_REG16, offsetof(user_regs_struct, rdi)});
-    add_command("bp", (Value){TOK_REG16_ADDR, offsetof(user_regs_struct, rbp)});
-    add_command("sp", (Value){TOK_REG16_ADDR, offsetof(user_regs_struct, rsp)});
-    add_command("r8d", (Value){TOK_REG16, offsetof(user_regs_struct, r8)});
-    add_command("r9d", (Value){TOK_REG16, offsetof(user_regs_struct, r9)});
-    add_command("r10d", (Value){TOK_REG16, offsetof(user_regs_struct, r10)});
-    add_command("r11d", (Value){TOK_REG16, offsetof(user_regs_struct, r11)});
-    add_command("r12d", (Value){TOK_REG16, offsetof(user_regs_struct, r12)});
-    add_command("r13d", (Value){TOK_REG16, offsetof(user_regs_struct, r13)});
-    add_command("r14d", (Value){TOK_REG16, offsetof(user_regs_struct, r14)});
-    add_command("r15d", (Value){TOK_REG16, offsetof(user_regs_struct, r15)});
+    map_insert("ax", (Value){TOK_REG16, offsetof(user_regs_struct, rax)});
+    map_insert("bx", (Value){TOK_REG16, offsetof(user_regs_struct, rbx)});
+    map_insert("cx", (Value){TOK_REG16, offsetof(user_regs_struct, rcx)});
+    map_insert("dx", (Value){TOK_REG16, offsetof(user_regs_struct, rdx)});
+    map_insert("si", (Value){TOK_REG16, offsetof(user_regs_struct, rsi)});
+    map_insert("di", (Value){TOK_REG16, offsetof(user_regs_struct, rdi)});
+    map_insert("bp", (Value){TOK_REG16_ADDR, offsetof(user_regs_struct, rbp)});
+    map_insert("sp", (Value){TOK_REG16_ADDR, offsetof(user_regs_struct, rsp)});
+    map_insert("r8d", (Value){TOK_REG16, offsetof(user_regs_struct, r8)});
+    map_insert("r9d", (Value){TOK_REG16, offsetof(user_regs_struct, r9)});
+    map_insert("r10d", (Value){TOK_REG16, offsetof(user_regs_struct, r10)});
+    map_insert("r11d", (Value){TOK_REG16, offsetof(user_regs_struct, r11)});
+    map_insert("r12d", (Value){TOK_REG16, offsetof(user_regs_struct, r12)});
+    map_insert("r13d", (Value){TOK_REG16, offsetof(user_regs_struct, r13)});
+    map_insert("r14d", (Value){TOK_REG16, offsetof(user_regs_struct, r14)});
+    map_insert("r15d", (Value){TOK_REG16, offsetof(user_regs_struct, r15)});
 
-    add_command("al", (Value){TOK_REG8, offsetof(user_regs_struct, rax)});
-    add_command("bl", (Value){TOK_REG8, offsetof(user_regs_struct, rbx)});
-    add_command("cl", (Value){TOK_REG8, offsetof(user_regs_struct, rcx)});
-    add_command("dl", (Value){TOK_REG8, offsetof(user_regs_struct, rdx)});
-    add_command("sil", (Value){TOK_REG8, offsetof(user_regs_struct, rsi)});
-    add_command("dil", (Value){TOK_REG8, offsetof(user_regs_struct, rdi)});
-    add_command("bpl", (Value){TOK_REG8_ADDR, offsetof(user_regs_struct, rbp)});
-    add_command("spl", (Value){TOK_REG8_ADDR, offsetof(user_regs_struct, rsp)});
-    add_command("r8b", (Value){TOK_REG8, offsetof(user_regs_struct, r8)});
-    add_command("r9b", (Value){TOK_REG8, offsetof(user_regs_struct, r9)});
-    add_command("r10b", (Value){TOK_REG8, offsetof(user_regs_struct, r10)});
-    add_command("r11b", (Value){TOK_REG8, offsetof(user_regs_struct, r11)});
-    add_command("r12b", (Value){TOK_REG8, offsetof(user_regs_struct, r12)});
-    add_command("r13b", (Value){TOK_REG8, offsetof(user_regs_struct, r13)});
-    add_command("r14b", (Value){TOK_REG8, offsetof(user_regs_struct, r14)});
-    add_command("r15b", (Value){TOK_REG8, offsetof(user_regs_struct, r15)});
+    map_insert("al", (Value){TOK_REG8, offsetof(user_regs_struct, rax)});
+    map_insert("bl", (Value){TOK_REG8, offsetof(user_regs_struct, rbx)});
+    map_insert("cl", (Value){TOK_REG8, offsetof(user_regs_struct, rcx)});
+    map_insert("dl", (Value){TOK_REG8, offsetof(user_regs_struct, rdx)});
+    map_insert("sil", (Value){TOK_REG8, offsetof(user_regs_struct, rsi)});
+    map_insert("dil", (Value){TOK_REG8, offsetof(user_regs_struct, rdi)});
+    map_insert("bpl", (Value){TOK_REG8_ADDR, offsetof(user_regs_struct, rbp)});
+    map_insert("spl", (Value){TOK_REG8_ADDR, offsetof(user_regs_struct, rsp)});
+    map_insert("r8b", (Value){TOK_REG8, offsetof(user_regs_struct, r8)});
+    map_insert("r9b", (Value){TOK_REG8, offsetof(user_regs_struct, r9)});
+    map_insert("r10b", (Value){TOK_REG8, offsetof(user_regs_struct, r10)});
+    map_insert("r11b", (Value){TOK_REG8, offsetof(user_regs_struct, r11)});
+    map_insert("r12b", (Value){TOK_REG8, offsetof(user_regs_struct, r12)});
+    map_insert("r13b", (Value){TOK_REG8, offsetof(user_regs_struct, r13)});
+    map_insert("r14b", (Value){TOK_REG8, offsetof(user_regs_struct, r14)});
+    map_insert("r15b", (Value){TOK_REG8, offsetof(user_regs_struct, r15)});
 
-    add_command("ah", (Value){TOK_REG8_HIGH, offsetof(user_regs_struct, rax)});
-    add_command("bh", (Value){TOK_REG8_HIGH, offsetof(user_regs_struct, rbx)});
-    add_command("ch", (Value){TOK_REG8_HIGH, offsetof(user_regs_struct, rcx)});
-    add_command("dh", (Value){TOK_REG8_HIGH, offsetof(user_regs_struct, rdx)});
+    map_insert("ah", (Value){TOK_REG8_HIGH, offsetof(user_regs_struct, rax)});
+    map_insert("bh", (Value){TOK_REG8_HIGH, offsetof(user_regs_struct, rbx)});
+    map_insert("ch", (Value){TOK_REG8_HIGH, offsetof(user_regs_struct, rcx)});
+    map_insert("dh", (Value){TOK_REG8_HIGH, offsetof(user_regs_struct, rdx)});
 
-    add_command("rip",
-                (Value){TOK_REG64_ADDR, offsetof(user_regs_struct, rip)});
-    add_command("eflags",
-                (Value){TOK_EFLAGS, offsetof(user_regs_struct, eflags)});
-    add_command("cs", (Value){TOK_REG64, offsetof(user_regs_struct, cs)});
-    add_command("ss", (Value){TOK_REG64, offsetof(user_regs_struct, ss)});
-    add_command("ds", (Value){TOK_REG64, offsetof(user_regs_struct, ds)});
-    add_command("es", (Value){TOK_REG64, offsetof(user_regs_struct, es)});
-    add_command("fs", (Value){TOK_REG64, offsetof(user_regs_struct, fs)});
-    add_command("gs", (Value){TOK_REG64, offsetof(user_regs_struct, gs)});
+    map_insert("rip", (Value){TOK_REG64_ADDR, offsetof(user_regs_struct, rip)});
+    map_insert("eflags",
+               (Value){TOK_EFLAGS, offsetof(user_regs_struct, eflags)});
+    map_insert("cs", (Value){TOK_REG64, offsetof(user_regs_struct, cs)});
+    map_insert("ss", (Value){TOK_REG64, offsetof(user_regs_struct, ss)});
+    map_insert("ds", (Value){TOK_REG64, offsetof(user_regs_struct, ds)});
+    map_insert("es", (Value){TOK_REG64, offsetof(user_regs_struct, es)});
+    map_insert("fs", (Value){TOK_REG64, offsetof(user_regs_struct, fs)});
+    map_insert("gs", (Value){TOK_REG64, offsetof(user_regs_struct, gs)});
 }
 
-void init_lexer(const char *line) { buffer = line; }
+void scan_buffer(const char *line) { buffer = line; }

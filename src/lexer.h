@@ -28,5 +28,5 @@ typedef struct Token {
 } Token;
 
 void next_token(Token *tok);
-void init_commands(void);
-void init_lexer(const char *line);
+void init_lexer(void);
+void scan_buffer(const char *line);

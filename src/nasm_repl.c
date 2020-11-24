@@ -27,6 +27,8 @@ extern void run_child(void);
 #define COLOR_STACK_DIFF "\033[1;31m"
 #define COLOR_RSP "\033[1;34m"
 
+typedef struct user_regs_struct user_regs_struct;
+
 typedef enum Eflags {
     EFLAGS_CF = 0x00000001,
     EFLAGS_PF = 0x00000004,
@@ -46,8 +48,6 @@ typedef enum Eflags {
     EFLAGS_VIP = 0x00100000,
     EFLAGS_ID = 0x00200000
 } Eflags;
-
-typedef struct user_regs_struct user_regs_struct;
 
 typedef struct State {
     unsigned char prev_stack[STACK_SIZE];
@@ -205,135 +205,111 @@ void print_eflags(uint64_t eflags) {
     printf("]\n");
 }
 
-void print_reg64(const char *name, uint64_t reg) {
+void print_reg(const char *name, uint64_t reg) {
     printf("%-15s0x%-18lx%ld\n", name, reg, reg);
 }
 
-void print_reg64_addr(const char *name, uint64_t reg) {
+void print_reg_addr(const char *name, uint64_t reg) {
     printf("%-15s0x%-18lx0x%lx\n", name, reg, reg);
 }
 
-void print_reg32(const char *name, uint32_t reg) {
-    printf("%-15s0x%-18x%d\n", name, reg, reg);
-}
-
-void print_reg32_addr(const char *name, uint32_t reg) {
-    printf("%-15s0x%-18x0x%x\n", name, reg, reg);
-}
-
-void print_reg16(const char *name, uint16_t reg) {
-    printf("%-15s0x%-18x%hd\n", name, reg, reg);
-}
-
-void print_reg16_addr(const char *name, uint16_t reg) {
-    printf("%-15s0x%-18x0x%x\n", name, reg, reg);
-}
-
-void print_reg8(const char *name, uint8_t reg) {
-    printf("%-15s0x%-18x%hhd\n", name, reg, reg);
-}
-
-void print_reg8_addr(const char *name, uint8_t reg) {
-    printf("%-15s0x%-18x0x%x\n", name, reg, reg);
-}
-
 void print_regs(const user_regs_struct *regs) {
-    print_reg64("rax", regs->rax);
-    print_reg64("rbx", regs->rbx);
-    print_reg64("rcx", regs->rcx);
-    print_reg64("rdx", regs->rdx);
-    print_reg64("rsi", regs->rsi);
-    print_reg64("rdi", regs->rdi);
-    print_reg64_addr("rbp", regs->rbp);
-    print_reg64_addr("rsp", regs->rsp);
-    print_reg64("r8", regs->r8);
-    print_reg64("r9", regs->r9);
-    print_reg64("r10", regs->r10);
-    print_reg64("r11", regs->r11);
-    print_reg64("r12", regs->r12);
-    print_reg64("r13", regs->r13);
-    print_reg64("r14", regs->r14);
-    print_reg64("r15", regs->r15);
-    print_reg64_addr("rip", regs->rip);
+    print_reg("rax", regs->rax);
+    print_reg("rbx", regs->rbx);
+    print_reg("rcx", regs->rcx);
+    print_reg("rdx", regs->rdx);
+    print_reg("rsi", regs->rsi);
+    print_reg("rdi", regs->rdi);
+    print_reg_addr("rbp", regs->rbp);
+    print_reg_addr("rsp", regs->rsp);
+    print_reg("r8", regs->r8);
+    print_reg("r9", regs->r9);
+    print_reg("r10", regs->r10);
+    print_reg("r11", regs->r11);
+    print_reg("r12", regs->r12);
+    print_reg("r13", regs->r13);
+    print_reg("r14", regs->r14);
+    print_reg("r15", regs->r15);
+    print_reg_addr("rip", regs->rip);
     print_eflags(regs->eflags);
-    print_reg64("cs", regs->cs);
-    print_reg64("ss", regs->ss);
-    print_reg64("ds", regs->ds);
-    print_reg64("es", regs->es);
-    print_reg64("fs", regs->fs);
-    print_reg64("gs", regs->gs);
+    print_reg("cs", regs->cs);
+    print_reg("ss", regs->ss);
+    print_reg("ds", regs->ds);
+    print_reg("es", regs->es);
+    print_reg("fs", regs->fs);
+    print_reg("gs", regs->gs);
 }
 
 void print_changed_regs(const user_regs_struct *prev_regs,
                         const user_regs_struct *regs) {
     if (prev_regs->rax != regs->rax) {
-        print_reg64("rax", regs->rax);
+        print_reg("rax", regs->rax);
     }
     if (prev_regs->rbx != regs->rbx) {
-        print_reg64("rbx", regs->rbx);
+        print_reg("rbx", regs->rbx);
     }
     if (prev_regs->rcx != regs->rcx) {
-        print_reg64("rcx", regs->rcx);
+        print_reg("rcx", regs->rcx);
     }
     if (prev_regs->rdx != regs->rdx) {
-        print_reg64("rdx", regs->rdx);
+        print_reg("rdx", regs->rdx);
     }
     if (prev_regs->rsi != regs->rsi) {
-        print_reg64("rsi", regs->rsi);
+        print_reg("rsi", regs->rsi);
     }
     if (prev_regs->rdi != regs->rdi) {
-        print_reg64("rdi", regs->rdi);
+        print_reg("rdi", regs->rdi);
     }
     if (prev_regs->rbp != regs->rbp) {
-        print_reg64_addr("rbp", regs->rbp);
+        print_reg_addr("rbp", regs->rbp);
     }
     if (prev_regs->rsp != regs->rsp) {
-        print_reg64_addr("rsp", regs->rsp);
+        print_reg_addr("rsp", regs->rsp);
     }
     if (prev_regs->r8 != regs->r8) {
-        print_reg64("r8", regs->r8);
+        print_reg("r8", regs->r8);
     }
     if (prev_regs->r9 != regs->r9) {
-        print_reg64("r9", regs->r9);
+        print_reg("r9", regs->r9);
     }
     if (prev_regs->r10 != regs->r10) {
-        print_reg64("r10", regs->r10);
+        print_reg("r10", regs->r10);
     }
     if (prev_regs->r11 != regs->r11) {
-        print_reg64("r11", regs->r11);
+        print_reg("r11", regs->r11);
     }
     if (prev_regs->r12 != regs->r12) {
-        print_reg64("r12", regs->r12);
+        print_reg("r12", regs->r12);
     }
     if (prev_regs->r13 != regs->r13) {
-        print_reg64("r13", regs->r13);
+        print_reg("r13", regs->r13);
     }
     if (prev_regs->r14 != regs->r14) {
-        print_reg64("r14", regs->r14);
+        print_reg("r14", regs->r14);
     }
     if (prev_regs->r15 != regs->r15) {
-        print_reg64("r15", regs->r15);
+        print_reg("r15", regs->r15);
     }
     if (prev_regs->eflags != regs->eflags) {
         print_eflags(regs->eflags);
     }
     if (prev_regs->cs != regs->cs) {
-        print_reg64("cs", regs->cs);
+        print_reg("cs", regs->cs);
     }
     if (prev_regs->ss != regs->ss) {
-        print_reg64("ss", regs->ss);
+        print_reg("ss", regs->ss);
     }
     if (prev_regs->ds != regs->ds) {
-        print_reg64("ds", regs->ds);
+        print_reg("ds", regs->ds);
     }
     if (prev_regs->es != regs->es) {
-        print_reg64("es", regs->es);
+        print_reg("es", regs->es);
     }
     if (prev_regs->fs != regs->fs) {
-        print_reg64("fs", regs->fs);
+        print_reg("fs", regs->fs);
     }
     if (prev_regs->gs != regs->gs) {
-        print_reg64("gs", regs->gs);
+        print_reg("gs", regs->gs);
     }
 }
 
@@ -680,11 +656,11 @@ void run(pid_t pid) {
     State state;
     init_state(pid, &state);
 
-    init_commands();
+    init_lexer();
 
     char *line;
     while ((line = linenoise("> ")) != NULL) {
-        init_lexer(line);
+        scan_buffer(line);
         linenoiseHistoryAdd(line);
         handle_command(pid, &state, line);
         linenoiseFree(line);
