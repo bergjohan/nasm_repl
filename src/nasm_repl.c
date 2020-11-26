@@ -210,17 +210,29 @@ void print_eflags(uint64_t eflags, bool print_name) {
     if (eflags & EFLAGS_ID) {
         printf("ID ");
     }
-    printf("]\n");
+    printf("]  0x%lx\n", eflags);
 }
 
-void print_reg(const char *name, uint64_t reg) {
-    printf("%s = 0x%lx  %ld\n", name, reg, reg);
+void print_reg64(const char *name, uint64_t reg) {
+    if (name) {
+        printf("%s = ", name);
+    }
+    printf("%ld  0x%lx\n", reg, reg);
 }
 
-void print_xmm_reg(const char *name, int size, const unsigned int *xmm_space) {
+void print_reg32(uint32_t reg) { printf("%d  0x%x\n", reg, reg); }
+
+void print_reg16(uint16_t reg) { printf("%hd  0x%x\n", reg, reg); }
+
+void print_reg8(uint8_t reg) { printf("%hhd  0x%x\n", reg, reg); }
+
+void print_xmm_reg(const char *name, const unsigned int *xmm_space) {
     const unsigned char *buf = (const unsigned char *)xmm_space;
 
-    printf("%.*s = {\n", size, name);
+    if (name) {
+        printf("%s = ", name);
+    }
+    puts("{");
     printf("  v4_float = {");
     for (size_t i = 0; i < 4; i++) {
         float f;
@@ -272,125 +284,125 @@ void print_xmm_reg(const char *name, int size, const unsigned int *xmm_space) {
 void print_changed_regs(const user_regs_struct *prev_regs,
                         const user_regs_struct *regs) {
     if (prev_regs->rax != regs->rax) {
-        print_reg("rax", regs->rax);
+        print_reg64("rax", regs->rax);
     }
     if (prev_regs->rbx != regs->rbx) {
-        print_reg("rbx", regs->rbx);
+        print_reg64("rbx", regs->rbx);
     }
     if (prev_regs->rcx != regs->rcx) {
-        print_reg("rcx", regs->rcx);
+        print_reg64("rcx", regs->rcx);
     }
     if (prev_regs->rdx != regs->rdx) {
-        print_reg("rdx", regs->rdx);
+        print_reg64("rdx", regs->rdx);
     }
     if (prev_regs->rsi != regs->rsi) {
-        print_reg("rsi", regs->rsi);
+        print_reg64("rsi", regs->rsi);
     }
     if (prev_regs->rdi != regs->rdi) {
-        print_reg("rdi", regs->rdi);
+        print_reg64("rdi", regs->rdi);
     }
     if (prev_regs->rbp != regs->rbp) {
-        print_reg("rbp", regs->rbp);
+        print_reg64("rbp", regs->rbp);
     }
     if (prev_regs->rsp != regs->rsp) {
-        print_reg("rsp", regs->rsp);
+        print_reg64("rsp", regs->rsp);
     }
     if (prev_regs->r8 != regs->r8) {
-        print_reg("r8", regs->r8);
+        print_reg64("r8", regs->r8);
     }
     if (prev_regs->r9 != regs->r9) {
-        print_reg("r9", regs->r9);
+        print_reg64("r9", regs->r9);
     }
     if (prev_regs->r10 != regs->r10) {
-        print_reg("r10", regs->r10);
+        print_reg64("r10", regs->r10);
     }
     if (prev_regs->r11 != regs->r11) {
-        print_reg("r11", regs->r11);
+        print_reg64("r11", regs->r11);
     }
     if (prev_regs->r12 != regs->r12) {
-        print_reg("r12", regs->r12);
+        print_reg64("r12", regs->r12);
     }
     if (prev_regs->r13 != regs->r13) {
-        print_reg("r13", regs->r13);
+        print_reg64("r13", regs->r13);
     }
     if (prev_regs->r14 != regs->r14) {
-        print_reg("r14", regs->r14);
+        print_reg64("r14", regs->r14);
     }
     if (prev_regs->r15 != regs->r15) {
-        print_reg("r15", regs->r15);
+        print_reg64("r15", regs->r15);
     }
     if (prev_regs->eflags != regs->eflags) {
         print_eflags(regs->eflags, true);
     }
     if (prev_regs->cs != regs->cs) {
-        print_reg("cs", regs->cs);
+        print_reg64("cs", regs->cs);
     }
     if (prev_regs->ss != regs->ss) {
-        print_reg("ss", regs->ss);
+        print_reg64("ss", regs->ss);
     }
     if (prev_regs->ds != regs->ds) {
-        print_reg("ds", regs->ds);
+        print_reg64("ds", regs->ds);
     }
     if (prev_regs->es != regs->es) {
-        print_reg("es", regs->es);
+        print_reg64("es", regs->es);
     }
     if (prev_regs->fs != regs->fs) {
-        print_reg("fs", regs->fs);
+        print_reg64("fs", regs->fs);
     }
     if (prev_regs->gs != regs->gs) {
-        print_reg("gs", regs->gs);
+        print_reg64("gs", regs->gs);
     }
 }
 
-void print_changed_fpregs(const user_fpregs_struct *prev_fpregs,
-                          const user_fpregs_struct *fpregs) {
-    if (memcmp(&prev_fpregs->xmm_space[0], &fpregs->xmm_space[0], 16) != 0) {
-        print_xmm_reg("xmm0", 4, &fpregs->xmm_space[0]);
+void print_changed_xmm_regs(const unsigned int *prev_xmm_space,
+                            const unsigned int *xmm_space) {
+    if (memcmp(&prev_xmm_space[0], &xmm_space[0], 16) != 0) {
+        print_xmm_reg("xmm0", &xmm_space[0]);
     }
-    if (memcmp(&prev_fpregs->xmm_space[4], &fpregs->xmm_space[4], 16) != 0) {
-        print_xmm_reg("xmm1", 4, &fpregs->xmm_space[4]);
+    if (memcmp(&prev_xmm_space[4], &xmm_space[4], 16) != 0) {
+        print_xmm_reg("xmm1", &xmm_space[4]);
     }
-    if (memcmp(&prev_fpregs->xmm_space[8], &fpregs->xmm_space[8], 16) != 0) {
-        print_xmm_reg("xmm2", 4, &fpregs->xmm_space[8]);
+    if (memcmp(&prev_xmm_space[8], &xmm_space[8], 16) != 0) {
+        print_xmm_reg("xmm2", &xmm_space[8]);
     }
-    if (memcmp(&prev_fpregs->xmm_space[12], &fpregs->xmm_space[12], 16) != 0) {
-        print_xmm_reg("xmm3", 4, &fpregs->xmm_space[12]);
+    if (memcmp(&prev_xmm_space[12], &xmm_space[12], 16) != 0) {
+        print_xmm_reg("xmm3", &xmm_space[12]);
     }
-    if (memcmp(&prev_fpregs->xmm_space[16], &fpregs->xmm_space[16], 16) != 0) {
-        print_xmm_reg("xmm4", 4, &fpregs->xmm_space[16]);
+    if (memcmp(&prev_xmm_space[16], &xmm_space[16], 16) != 0) {
+        print_xmm_reg("xmm4", &xmm_space[16]);
     }
-    if (memcmp(&prev_fpregs->xmm_space[20], &fpregs->xmm_space[20], 16) != 0) {
-        print_xmm_reg("xmm5", 4, &fpregs->xmm_space[20]);
+    if (memcmp(&prev_xmm_space[20], &xmm_space[20], 16) != 0) {
+        print_xmm_reg("xmm5", &xmm_space[20]);
     }
-    if (memcmp(&prev_fpregs->xmm_space[24], &fpregs->xmm_space[24], 16) != 0) {
-        print_xmm_reg("xmm6", 4, &fpregs->xmm_space[24]);
+    if (memcmp(&prev_xmm_space[24], &xmm_space[24], 16) != 0) {
+        print_xmm_reg("xmm6", &xmm_space[24]);
     }
-    if (memcmp(&prev_fpregs->xmm_space[28], &fpregs->xmm_space[28], 16) != 0) {
-        print_xmm_reg("xmm7", 4, &fpregs->xmm_space[28]);
+    if (memcmp(&prev_xmm_space[28], &xmm_space[28], 16) != 0) {
+        print_xmm_reg("xmm7", &xmm_space[28]);
     }
-    if (memcmp(&prev_fpregs->xmm_space[32], &fpregs->xmm_space[32], 16) != 0) {
-        print_xmm_reg("xmm8", 4, &fpregs->xmm_space[32]);
+    if (memcmp(&prev_xmm_space[32], &xmm_space[32], 16) != 0) {
+        print_xmm_reg("xmm8", &xmm_space[32]);
     }
-    if (memcmp(&prev_fpregs->xmm_space[36], &fpregs->xmm_space[36], 16) != 0) {
-        print_xmm_reg("xmm9", 4, &fpregs->xmm_space[36]);
+    if (memcmp(&prev_xmm_space[36], &xmm_space[36], 16) != 0) {
+        print_xmm_reg("xmm9", &xmm_space[36]);
     }
-    if (memcmp(&prev_fpregs->xmm_space[40], &fpregs->xmm_space[40], 16) != 0) {
-        print_xmm_reg("xmm10", 5, &fpregs->xmm_space[40]);
+    if (memcmp(&prev_xmm_space[40], &xmm_space[40], 16) != 0) {
+        print_xmm_reg("xmm10", &xmm_space[40]);
     }
-    if (memcmp(&prev_fpregs->xmm_space[44], &fpregs->xmm_space[44], 16) != 0) {
-        print_xmm_reg("xmm11", 5, &fpregs->xmm_space[44]);
+    if (memcmp(&prev_xmm_space[44], &xmm_space[44], 16) != 0) {
+        print_xmm_reg("xmm11", &xmm_space[44]);
     }
-    if (memcmp(&prev_fpregs->xmm_space[48], &fpregs->xmm_space[48], 16) != 0) {
-        print_xmm_reg("xmm12", 5, &fpregs->xmm_space[48]);
+    if (memcmp(&prev_xmm_space[48], &xmm_space[48], 16) != 0) {
+        print_xmm_reg("xmm12", &xmm_space[48]);
     }
-    if (memcmp(&prev_fpregs->xmm_space[52], &fpregs->xmm_space[52], 16) != 0) {
-        print_xmm_reg("xmm13", 5, &fpregs->xmm_space[52]);
+    if (memcmp(&prev_xmm_space[52], &xmm_space[52], 16) != 0) {
+        print_xmm_reg("xmm13", &xmm_space[52]);
     }
-    if (memcmp(&prev_fpregs->xmm_space[56], &fpregs->xmm_space[56], 16) != 0) {
-        print_xmm_reg("xmm14", 5, &fpregs->xmm_space[56]);
+    if (memcmp(&prev_xmm_space[56], &xmm_space[56], 16) != 0) {
+        print_xmm_reg("xmm14", &xmm_space[56]);
     }
-    if (memcmp(&prev_fpregs->xmm_space[60], &fpregs->xmm_space[60], 16) != 0) {
-        print_xmm_reg("xmm15", 5, &fpregs->xmm_space[60]);
+    if (memcmp(&prev_xmm_space[60], &xmm_space[60], 16) != 0) {
+        print_xmm_reg("xmm15", &xmm_space[60]);
     }
 }
 
@@ -646,7 +658,8 @@ void handle_asm_command(pid_t pid, State *state, const char *line,
 
     if (memcmp(state->prev_fpregs.xmm_space, state->fpregs.xmm_space,
                sizeof(state->fpregs.xmm_space)) != 0) {
-        print_changed_fpregs(&state->prev_fpregs, &state->fpregs);
+        print_changed_xmm_regs(state->prev_fpregs.xmm_space,
+                               state->fpregs.xmm_space);
     }
 }
 
@@ -674,27 +687,27 @@ void handle_command(pid_t pid, State *state, const char *line) {
         break;
     case TOK_REG64: {
         uint64_t reg = *(uint64_t *)((char *)&state->regs + tok.offset);
-        printf("0x%lx  %ld\n", reg, reg);
+        print_reg64(NULL, reg);
         break;
     }
     case TOK_REG32: {
         uint64_t reg = *(uint64_t *)((char *)&state->regs + tok.offset);
-        printf("0x%x  %d\n", (uint32_t)reg, (uint32_t)reg);
+        print_reg32((uint32_t)reg);
         break;
     }
     case TOK_REG16: {
         uint64_t reg = *(uint64_t *)((char *)&state->regs + tok.offset);
-        printf("0x%x  %hd\n", (uint16_t)reg, (uint16_t)reg);
+        print_reg16((uint16_t)reg);
         break;
     }
     case TOK_REG8: {
         uint64_t reg = *(uint64_t *)((char *)&state->regs + tok.offset);
-        printf("0x%x  %hhd\n", (uint8_t)reg, (uint8_t)reg);
+        print_reg8((uint8_t)reg);
         break;
     }
     case TOK_REG8_HIGH: {
         uint64_t reg = *(uint64_t *)((char *)&state->regs + tok.offset);
-        printf("0x%x  %hhd\n", (uint8_t)(reg >> 8), (uint8_t)(reg >> 8));
+        print_reg8((uint8_t)(reg >> 8));
         break;
     }
     case TOK_EFLAGS: {
@@ -703,8 +716,7 @@ void handle_command(pid_t pid, State *state, const char *line) {
         break;
     }
     case TOK_XMM:
-        print_xmm_reg(tok.start, (int)tok.size,
-                      state->fpregs.xmm_space + tok.offset);
+        print_xmm_reg(NULL, state->fpregs.xmm_space + tok.offset);
         break;
     default:
         handle_asm_command(pid, state, line, kind);
