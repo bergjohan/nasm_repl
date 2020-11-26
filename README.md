@@ -2,6 +2,15 @@
 
 A x86-64 assembly REPL for Linux. [NASM](https://nasm.us/) is used to assemble instructions, and [ptrace](https://www.man7.org/linux/man-pages/man2/ptrace.2.html) is used to write and execute them in a child process.
 
+## Installation
+
+```
+mkdir build
+cd build
+cmake ..
+make
+```
+
 ## Features
 
 Type an instruction to execute it. Any register that has changed will be printed.
