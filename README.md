@@ -17,7 +17,7 @@ Type an instruction to execute it. Any register that has changed will be printed
 
 ```
 > mov rax, 0xff
-rax = 0xff  255
+rax = 255  0xff
 ```
 
 Changes to the stack memory will also be printed. Changed bytes are colored in red, and the position of rsp is colored in blue (not visible here):
@@ -63,7 +63,7 @@ Type a register name to print its value:
 
 ```
 > rax
-0xff  255
+255  0xff
 ```
 
 To print the stack memory, use the `stack` command:
